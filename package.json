@@ -12,6 +12,7 @@
   "dependencies": {
     "cesium": "^1.78.0",
     "element-ui": "^2.15.0",
+    "jquery": "^3.5.1",
     "view-design": "^4.5.0",
     "vue": "^2.5.2",
     "vue-router": "^3.0.1"
