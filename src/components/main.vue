@@ -147,13 +147,13 @@
               <a href="javascript:" @click="draw_picture(3)">面</a>
             </Dropdown-item>
             <Dropdown-item>
-              <a href="javascript:" @click="draw_picture(4)">立方体</a>
+              <a href="javascript:" @click="draw_picture(4)">矩形</a>
             </Dropdown-item>
             <Dropdown-item>
               <a href="javascript:" @click="draw_picture(5)">测距</a>
             </Dropdown-item>
             <Dropdown-item>
-              <a href="javascript:">测面</a>
+              <a href="javascript:" @click="draw_picture(6)">测面</a>
             </Dropdown-item>
           </Dropdown-menu>
         </Dropdown>
@@ -191,97 +191,145 @@
     data() {
       return {
         viewer: '',
-        // draw:false,
         mousePosition: {
           lat: 0,
           lng: 0,
           height: 0
         },
         activeShapePoints: [],//点集合
-        activeShape: '',
-        floatingPoint: null,//矩形中的标识点
-        draw: false,//是否绘制
-        latObj: '',//定点位置信息
-        drawingMode: '',//绘制类型
-        lastPosition: null,//设置前一个点
-        menu: document.getElementById("menu"),//获取右键菜单
-        begin: false,//是否开始绘制
-        tempEntities: [],//实体列表,= entities_point
-        count: 1,//点的数量
-        buildLine: null,//开启测距
-        buildArea: null,//开启测面
-        linePoint: null,//终点实体
-        right: null,//终点坐标
-        rec: false,//开启绘制矩形
+        floatingPoint: null,//矩形中的标识点,面
         rectangle: null,//矩形实体
-        recPoints: [],//矩形点的集合
         num: 0,
         polyline: null,//活动线
-        polylineData: null,//线数据
-        polylineLast: null,//最后的线数据
-        Entities_line: [],//脏数据
+        polylinePoint: null,//线数据
+        polylineLastPoint: null,//线上的最终点
+        lastPosition: null,//上一个点
+        linePositionData: [],//线上的点数据，用于显示距离数据
         polygon: null, // 活动面
         polygonData: null, //面数据
-        polygonLast: null, // 最后的面数据
-        Entities_polygon: [],//脏数据
-        handler: '',
+        handler: '',//鼠标事件
         draw_able: false,//是否开始画
         index: 1,
-        line_able:false,//是否画线
+        line_able: false,//是否画线
         polygon_able: false,//是否画面
-        rectangle_able:false,//是否画矩形
-        rectangle:null,//矩形
-        getDistance_able:false,//是否测距
-        // pointData:[],
-        // pointArrays:[],
-        // lineArrays:[],
-        // lineEntity:{},
-        // polygonEntity:{},
-        // showPointAlert:false,
+        rectangle_able: false,//是否画矩形
+        rectangle: null,//矩形
+        getDistance_able: false,//是否测距
+        line_text: null,//存放距离
+        count: 1,//点的数量
+        distance: 0,//距离 暂时没用到
+        getArea_able: false,//是否测面
+        polygonCenter: 0,//面的中心
+        polylineCenyer: 0,//线段的中心
+//        测面过程中需要声明的全局变量
+        earthRadiusMeters: 6371000.0,
+        radiansPerDegree: Math.PI / 180.0,
+        degreesPerRadian: 180.0 / Math.PI,
+        text: null,//需要显示的文字
       }
     },
     mounted() {
       this.init();
-      //双击鼠标清除默认事件
-      // this.viewer._cesiumWidget.screenSpaceEventHandler.removeInputAction(Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK);
     },
     methods: {
       draw_picture(index) {
         this.draw_able = true
         var me = this
-        if (index === 1) {
+        if (index === 1) {//画点
           this.index = 1
         }
-        else if (index === 2) {
+        else if (index === 2) {//画线
           this.draw_able = true
           this.line_able = true
           this.index = 2
         }
-        else if (index === 3){
+        else if (index === 3) {//画面
           this.draw_able = true
           this.polygon_able = true
           this.index = 3
         }
-        else if (index === 4){
+        else if (index === 4) {//画矩形
           this.draw_able = true
           this.rectangle_able = true
           this.index = 4
         }
-        else if (index === 5){
+        else if (index === 5) {//测距
           this.draw_able = true
           this.getDistance_able = true
           this.index = 5
         }
+        else if (index === 6) {//测面
+          this.draw_able = true
+          this.getArea_able = true
+          this.index = 6
+        }
         this.handler.setInputAction(function (e) {
-          me.draw_able = false
+          if (me.polygon_able || me.getArea_able || me.rectangle_able) {//画面 测面右键
+            me.terminateShape();
+            me.polygon_able = false
+            me.getArea_able = false
+            me.rectangle_able = false
+          }
+          else if (me.getDistance_able) {
+            me.polylineLastPoint = me.activeShapePoints[me.activeShapePoints.length - 1];//得到最后一个点
+            me.viewer.entities.remove(me.polylinePoint);//移除最后一个节点，换成终点
+            me.polylinePoint = me.viewer.entities.add({
+              position: me.polylineLastPoint,
+              label: {
+                text: '终点',
+                font: '20px Helvetica',
+                fillColor: Cesium.Color.WHITE,
+                eyeOffset: new Cesium.Cartesian3(0, 0, -150)
+              }
+            });
+            me.getDistance_able = false
+          }
           me.line_able = false
-          me.polygon_able = false
-          me.rectangle_able = false
-          me.getDistance_able = false
+          me.lastPosition = null//清空上一个点
+          me.linePositionData = []//清空线上的点
+          me.polylinePoint = []//清空
+          me.draw_able = false
           me.activeShapePoints = []
-        }, Cesium.ScreenSpaceEventType.RIGHT_CLICK);
-
+          me.count = 1//初始化
+        }, Cesium.ScreenSpaceEventType.RIGHT_CLICK);//右键结束绘图
       },
+
+      terminateShape() {//绘制最终图形
+        var me = this;
+        if (me.activeShapePoints.length) {
+          if (me.polygon_able || me.rectangle_able || me.getArea_able) {
+            if (me.polygon_able) {
+              me.createPolygon(me.activeShapePoints);//绘制最终面
+              me.text = '新建画面'
+            }
+            else if (me.rectangle_able) {
+              me.text = '新建矩形'
+            }
+            else if (me.getArea_able) {
+              me.createPolygon(me.activeShapePoints);//绘制最终面
+              var area = ((me.getArea(me.activeShapePoints)) * 1000000).toFixed(4) + '平方米';//原面积的单位为平方公里
+              me.text = area;
+            }
+            me.polygonCenter = Cesium.BoundingSphere.fromPoints(me.activeShapePoints).center;//所有的点画完后，得到多边形中心
+            me.polygonCenter = Cesium.Ellipsoid.WGS84.scaleToGeodeticSurface(me.polygonCenter);
+            me.viewer.entities.add({
+              position: me.polygonCenter,
+              label: {
+                text: me.text,
+                font: '20px Helvetica',
+                fillColor: Cesium.Color.WHITE,
+                eyeOffset: new Cesium.Cartesian3(0, 0, -150)
+              }
+            });
+          }
+        }
+        me.viewer.entities.remove(me.floatingPoint); //去除动态点图形（当前鼠标点）
+        me.viewer.entities.remove(me.polygon); //去除动态图形
+        me.floatingPoint = undefined;
+        me.activeShape = undefined;
+        me.activeShapePoints = [];
+      },
+
       init() {
         var TDT_IMG_C = 'http://{s}.tianditu.gov.cn/img_c/wmts?service=wmts&request=GetTile&version=1.0.0' +
           '&LAYER=img&tileMatrixSet=c&TileMatrix={TileMatrix}&TileRow={TileRow}&TileCol={TileCol}' +
@@ -331,100 +379,127 @@
           var cartographic = me.viewer.scene.globe.ellipsoid.cartesianToCartographic(cartesian)
           me.mousePosition.height = Math.ceil(me.viewer.camera.positionCartographic.height)
           me.mousePosition.lat = Cesium.Math.toDegrees(cartographic.latitude)
-          me.mousePosition.lng = Cesium.Math.toDegrees(cartographic.longitude)
-          if(me.line_able){
-            if (me.activeShapePoints.length < 1) return;
-            var cartesian = me.viewer.scene.camera.pickEllipsoid(e.endPosition);
-            if (!Cesium.defined(me.polyline)) {
-              me.polyline = me.createPolyline()//画线
-            }
-            if (me.polyline) {
-              me.polyline.pop();
-              me.polyline.push(cartesian);
-            }
-          }
-          else if(me.polygon_able){//面
-            if (me.activeShapePoints.length < 1) return;
-            var cartesian = me.viewer.camera.pickEllipsoid(e.endPosition);
-            if (me.activeShapePoints.length >= 3) {//当所画的点的个数大于等于3画面
-              if (!Cesium.defined(me.polygon)) {
-                me.polygon = me.createPolygon();
+          me.mousePosition.lng = Cesium.Math.toDegrees(cartographic.longitude)//获得鼠标所在位置
+          if (me.polygon_able || me.getArea_able) {//画面时获取动态点
+            if (Cesium.defined(me.floatingPoint)) {
+              var newPosition = me.viewer.scene.pickPosition(e.endPosition);//获取鼠标点
+              console.log(newPosition)//未输出
+              if (Cesium.defined(newPosition)) {
+                me.floatingPoint.position.setValue(newPosition);
+                me.activeShapePoints.pop();//去除动态点
+                me.activeShapePoints.push(newPosition);//将最后一个点push进动态点集合
               }
             }
-            me.activeShapePoints.pop();
-            me.activeShapePoints.push(cartesian);
           }
-          else if(me.rectangle_able){//矩形
-            if (me.activeShapePoints.length < 3) return;
-            var cartesian = me.viewer.camera.pickEllipsoid(e.endPosition);
-            if (!Cesium.defined(me.rectangle)) {
-              me.rectangle = me.createRectangle();
-            }
-//            me.floatingPoint.endPosition.setValue(cartesian);//endPosition未定义
-            if (me.rectangle) {
-              me.activeShapePoints.pop();
-              me.activeShapePoints.push(cartesian);
-            }
-          }
-          else if(me.getDistance_able){//测距,这一部分与画线的右击重复
-            if (me.activeShapePoints.length < 1) return;
-            var cartesian = me.viewer.scene.camera.pickEllipsoid(e.endPosition);
-            if (!Cesium.defined(me.polyline)) {
-              me.polyline = me.createPolyline()//画线
-            }
-            if (me.polyline) {
-              me.polyline.pop();
-              me.polyline.push(cartesian);
-            }
-          }
-
         }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
 
         this.handler.setInputAction(function (e) { //单击开始绘制
           if (me.draw_able) {
-            if (me.index === 1) {
-              me.createPoint(e)
-            } else if (me.index === 2) {//绘制线左键单击
-              var cartesian = me.viewer.scene.camera.pickEllipsoid(e.position, me.viewer.scene.globe.ellipsoid);
-              if (me.activeShapePoints.length === 0) {
-                me.activeShapePoints.push(cartesian.clone());
-              }
-              me.activeShapePoints.push(cartesian);
-              me.createPoint(e);// 绘制点
-            } else if (me.index === 3) {//绘制面左键单击
-              var cartesian = me.viewer.scene.camera.pickEllipsoid(e.position, me.viewer.scene.globe.ellipsoid);
-              if (me.activeShapePoints == 0) {
-                me.activeShapePoints.push(cartesian.clone());
-              }
-              me.createPoint(e);//产生点
-              me.activeShapePoints.push(cartesian);
+            if (me.index === 1) {//点单击
+              var text = '新建标点'
+              me.createPoint2(e, text)//绘制点
             }
-            else if(me.index === 4){//绘制矩形左键单击
-              var cartesian = me.viewer.scene.camera.pickEllipsoid(e.position, me.viewer.scene.globe.ellipsoid);
-              if (me.activeShapePoints == 0) {
-                me.activeShapePoints.push(cartesian.clone());
+            else if (me.index === 2 || me.index === 5) {//线，测距单击
+              var earthPosition = me.viewer.scene.camera.pickEllipsoid(e.position, me.viewer.scene.globe.ellipsoid);
+              if (Cesium.defined(earthPosition)) {
+                if (me.activeShapePoints.length === 0) {
+                  if (me.index === 2) {
+                    var text = me.count.toString()
+                    me.createPoint2(e, text);
+                  }
+                  else {
+                    var text = '起点';
+                    me.createPoint2(e, text);
+                  }
+                }
+                me.activeShapePoints.push(earthPosition);//将得到的点数据存入活动点集中
+                if (me.line_able || me.getDistance_able) {
+                  if (me.lastPosition != null) {//画线时得到两点的中心
+                    me.linePositionData = [] //清空线数据，存入新的数据
+                    me.linePositionData.push(me.lastPosition)
+                    me.linePositionData.push(earthPosition)
+                    me.polylineCenter = Cesium.BoundingSphere.fromPoints(me.linePositionData).center;//多边形中心
+                    me.polylineCenter = Cesium.Ellipsoid.WGS84.scaleToGeodeticSurface(me.polylineCenter);
+                    me.polyline = me.createPolyline()//两点成线
+                    if (me.line_able) {
+                      var point = me.createPoint(e);//添加线上的点
+                      me.text = '新建画线';//画线时在线的中间添加新建画线
+                      me.count++;//点的个数自增
+                      me.viewer.entities.add({//添加点的标号，从2开始
+                        position: earthPosition,
+                        label: {
+                          text: me.count.toString(),
+                          font: '20px Helvetica',
+                          fillColor: Cesium.Color.WHITE,
+                          eyeOffset: new Cesium.Cartesian3(0, 0, -150)
+                        }
+                      });
+                    }
+                    else if (me.getDistance_able) {
+                      var point = me.createPoint(e);//添加线上的点
+                      if (me.activeShapePoints.length > 1) {//消除undefined bug
+                        me.text = me.line_text
+                      }
+                      me.polylinePoint = me.viewer.entities.add({
+                        position: earthPosition,
+                        label: {
+                          text: '节点',
+                          font: '20px Helvetica',
+                          fillColor: Cesium.Color.WHITE,
+                          eyeOffset: new Cesium.Cartesian3(0, 0, -150)
+                        }
+                      });
+                    }
+                    me.viewer.entities.add({
+                      position: me.polylineCenter,
+                      label: {
+                        text: me.text,
+                        font: '20px Helvetica',
+                        fillColor: Cesium.Color.WHITE,
+                        eyeOffset: new Cesium.Cartesian3(0, 0, -150)
+                      }
+                    });
+                  }
+                  me.lastPosition = earthPosition//得到新的点
+                }
+                me.activeShapePoints.push(earthPosition);
               }
-              me.createPoint(e);//产生点
-              me.floatingPoint = me.createPoint(e);
-              me.activeShapePoints.push(cartesian);
             }
-            else if(me.index === 5){//测距单击
-              var cartesian = me.viewer.scene.camera.pickEllipsoid(e.position, me.viewer.scene.globe.ellipsoid);
-              if (me.activeShapePoints == 0) {
-                me.activeShapePoints.push(cartesian.clone());
+            else if (me.index === 3 || me.index === 4 || me.index === 6) {//面单击,矩形,测面单击
+              var earthPosition = me.viewer.scene.camera.pickEllipsoid(e.position, me.viewer.scene.globe.ellipsoid);
+              if (Cesium.defined(earthPosition)) {
+                var point = me.createPoint(e);//产生点
+                    me.viewer.entities.add({//添加点的标号
+                      position: earthPosition,
+                      label: {
+                        text: me.count.toString(),
+                        font: '20px Helvetica',
+                        fillColor: Cesium.Color.WHITE,
+                        eyeOffset: new Cesium.Cartesian3(0, 0, -150)
+                      }
+                    });
+                me.count++;
+                if (me.activeShapePoints.length === 0) {//第一个点
+                  me.floatingPoint = point;
+                  me.activeShapePoints.push(earthPosition);//活动点的集合
+                  var dynamicPositions = new Cesium.CallbackProperty(function () {//得到用于绘制面的点
+                    if (me.index === 3 || me.index === 6) {
+                      return new Cesium.PolygonHierarchy(me.activeShapePoints);
+                    }
+                  }, false);
+                  me.polygon = me.createPolygon(dynamicPositions);//绘制面
+                  if (me.rectangle_able) {//绘制矩形
+                    me.rectangle = me.createRectangle();
+                  }
+                }
+                me.activeShapePoints.push(earthPosition);
               }
-              me.activeShapePoints.push(cartesian);
-              var text="起点";
-              if(me.polyline){
-                text = me.getSpaceDistance(me.activeShapePoints);
-              }
-              me.createPoint2(e,text);// 绘制点
             }
           }
         }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
       },
       //画点
-      createPoint(e) {
+      createPoint(e) {//左键单击产生点
         var _this = this;
         var cartesian = _this.viewer.scene.camera.pickEllipsoid(e.position, _this.viewer.scene.globe.ellipsoid);
         var point = _this.viewer.entities.add({
@@ -440,55 +515,50 @@
       //创建线
       createPolyline() {
         var $this = this;
-        var polyline = $this.viewer.entities.add({
+        var drawpolyline = $this.viewer.entities.add({
           polyline: {
             positions: $this.activeShapePoints,
-            show: true,
             material: Cesium.Color.RED,
             width: 3,
             clampToGround: true
           }
         });
-        $this.Entities_line.push(polyline);
+        if ($this.index === 5) {
+          $this.line_text = $this.getSpaceDistance($this.activeShapePoints);//如果测距得到两点距离
+        }
       },
 
       //创建面
-      createPolygon(){
+      createPolygon(positionsData){
         var $this = this;
         var polygon = $this.viewer.entities.add({
           polygon: {
-            // hierarchy: $this.activeShapePoints,//位置可能出现问题
-            // clampToGround: true,
-            // show: true,
-            // fill: true,
-            // material: Cesium.Color.RED.withAlpha(0.5),
-            // width: 3,
-            // outlineColor: Cesium.Color.BLACK,
-            // outlineWidth: 1,
-            // outline: false
-            hierarchy: new Cesium.PolygonHierarchy($this.activeShapePoints),
-            material: new Cesium.ColorMaterialProperty(Cesium.Color.BLUE.withAlpha(0.5))
+            hierarchy: positionsData,
+            material: new Cesium.ColorMaterialProperty(Cesium.Color.BLUE.withAlpha(0.8))
           }
         });
-        $this.tempEntities.push(polygon);//储存脏数据
       },
 
-       //  立方体
+      //  矩形
       createRectangle() {
         var $this = this;
+        var arr = typeof $this.activeShapePoints.getValue === 'function' ? $this.activeShapePoints.getValue(0) : $this.activeShapePoints;
         var rectangle = $this.viewer.entities.add({
-//          name: "rectangle",
           rectangle: {
-            coordinates: new Cesium.Rectangle.fromCartesianArray($this.activeShapePoints),
+            coordinates: new Cesium.CallbackProperty(function () {
+              var obj = Cesium.Rectangle.fromCartesianArray(arr);
+//              if(obj.west==obj.east){ obj.east+=0.000001};//偏移修正
+//              if(obj.south==obj.north){obj.north+=0.000001};//偏移修正
+              return obj;
+            }, false),
             material: Cesium.Color.RED.withAlpha(0.5)
           }
         });
-        $this.tempEntities.push(rectangle);
       },
 
-       //  测距
-      //测距产生的点
-      createPoint2(e,text) {
+      //  测距
+      //同时产生点和编号
+      createPoint2(e, text) {
         var _this = this;
         var cartesian = _this.viewer.scene.camera.pickEllipsoid(e.position, _this.viewer.scene.globe.ellipsoid);
         var point = _this.viewer.entities.add({
@@ -501,61 +571,151 @@
           label: {
             text: text,
             font: '18px sans-serif',
-            style : Cesium.LabelStyle.FILL,
-            outlineWidth : 1,
+            style: Cesium.LabelStyle.FILL,
+            outlineWidth: 1,
             fillColor: Cesium.Color.WHITE,
-            showBackground:false,
+            showBackground: false,
             backgroundColor: Cesium.Color.ORANGE.withAlpha(0.6),
             horizontalOrigin: Cesium.HorizontalOrigin.LEFT,
-            pixelOffset: new Cesium.Cartesian2(5.0,-20.0),
+            pixelOffset: new Cesium.Cartesian2(5.0, -20.0),
           }
         });
       },
+      //测距函数
       getSpaceDistance(positions) {
-        var distance = 0;
-        var $this=this;
         for (var i = 0; i < positions.length - 1; i++) {
-          var point1cartographic = $this.Cesium.Cartographic.fromCartesian(positions[i]);
-          var point2cartographic = $this.Cesium.Cartographic.fromCartesian(positions[i + 1]);
+          var point1cartographic = Cesium.Cartographic.fromCartesian(positions[i]);
+          var point2cartographic = Cesium.Cartographic.fromCartesian(positions[i + 1]);
           /**根据经纬度计算出距离**/
-          var geodesic = new $this.Cesium.EllipsoidGeodesic();
+          var geodesic = new Cesium.EllipsoidGeodesic();
           geodesic.setEndPoints(point1cartographic, point2cartographic);
           var s = geodesic.surfaceDistance;
-          //console.log(Math.sqrt(Math.pow(distance, 2) + Math.pow(endheight, 2)));
           //返回两点之间的距离
-          s = Math.sqrt(Math.pow(s, 2) + Math.pow(point2cartographic.height - point1cartographic.height, 2));
-          distance = distance + s;
+          s = Math.sqrt(Math.pow(s, 2) + Math.pow(point2cartographic.height - point1cartographic.height, 2)).toFixed(4);
         }
-        return distance.toFixed(2)>1000 ? (distance/1000).toFixed(2)+"公里" : distance.toFixed(2)+"米";
+        return s + 'm'
       },
-       //  测面
-       //  清除
+      //  测面
+//      SphericalPolygonAreaMeters(points) {//计算出的面积有问题
+//        var _this = this
+//        var totalAngle = 0;
+//        for (var i = 0; i < points.length; i++) {
+//          var j = (i + 1) % points.length;
+//          var k = (i + 2) % points.length;
+//          totalAngle += _this.Angle(points[i], points[j], points[k]);
+//        }
+//        var planarTotalAngle = (points.length - 2) * 180.0;
+//        var sphericalExcess = totalAngle - planarTotalAngle;
+//        if (sphericalExcess > 420.0) {
+//          totalAngle = points.length * 360.0 - totalAngle;
+//          sphericalExcess = totalAngle - planarTotalAngle;
+//        } else if (sphericalExcess > 300.0 && sphericalExcess < 420.0) {
+//          sphericalExcess = Math.abs(360.0 - sphericalExcess);
+//        }
+//        return sphericalExcess * _this.radiansPerDegree * _this.earthRadiusMeters * _this.earthRadiusMeters;
+//      },
+//
+//      Angle(p1, p2, p3) {
+//          var _this = this
+//        var bearing21 = _this.Bearing(p2, p1);
+//        var bearing23 = _this.Bearing(p2, p3);
+//        var angle = bearing21 - bearing23;
+//        if (angle < 0) {
+//          angle += 360;
+//        }
+//        return angle;
+//      },
+//
+//      Bearing(from, to) {
+//          var _this = this
+//        var cartographic1 = _this.viewer.scene.globe.ellipsoid.cartesianToCartographic(from);
+////        var cartographic1 = Cesium.Cartographic.fromCartesian(from);
+//        var log_String1 = Cesium.Math.toDegrees(cartographic1.longitude).toFixed(9);//经度
+//        var lat_String1 = Cesium.Math.toDegrees(cartographic1.latitude).toFixed(8);//纬度
+//        var cartographic2 = _this.viewer.scene.globe.ellipsoid.cartesianToCartographic(to);
+////        var cartographic2 = Cesium.Cartographic.fromCartesian(to);
+//        var log_String2 = Cesium.Math.toDegrees(cartographic2.longitude).toFixed(9);//经度
+//        var lat_String2 = Cesium.Math.toDegrees(cartographic2.latitude).toFixed(8);//纬度
+//        var lat1 = lat_String1 * _this.radiansPerDegree;
+//        var lon1 = log_String1 * _this.radiansPerDegree;
+//        var lat2 = lat_String2 * _this.radiansPerDegree;
+//        var lon2 = log_String2 * _this.radiansPerDegree;
+//        var angle = -Math.atan2(Math.sin(lon1 - lon2) * Math.cos(lat2), Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(lon1 - lon2));
+//        if (angle < 0) {
+//          angle += Math.PI * 2.0;
+//        }
+//        angle = angle * _this.degreesPerRadian;
+//        return angle;
+//      },
+
+////      新的测面公式
+      getArea(points) {
+        var res = 0;
+        var _this = this
+        //拆分三角曲面
+        for (var i = 0; i < points.length - 2; i++) {
+          var j = (i + 1) % points.length;
+          var k = (i + 2) % points.length;
+          var totalAngle = _this.Angle(points[i], points[j], points[k]);
+
+          var dis_temp1 = _this.getDistance(points[i], points[j]);
+          var dis_temp2 = _this.getDistance(points[j], points[k]);
+          res += dis_temp1 * dis_temp2 * Math.abs(Math.sin(totalAngle));
+        }
+
+        return (res / 1000000.0).toFixed(8);
+      },
+
+      /*角度*/
+      Angle(p1, p2, p3) {
+        var _this = this
+        var bearing21 = _this.Bearing(p2, p1);
+        var bearing23 = _this.Bearing(p2, p3);
+        var angle = bearing21 - bearing23;
+        if (angle < 0) {
+          angle += 360;
+        }
+        return angle;
+      },
+
+      /*方向*/ //计算方法不同
+      Bearing(from, to) {
+        var _this = this
+        var cartographic_from = Cesium.Cartographic.fromCartesian(from);
+        var cartographic_to = Cesium.Cartographic.fromCartesian(to);
+        var lon_from = Cesium.Math.toDegrees(cartographic_from.longitude);
+        var lat_from = Cesium.Math.toDegrees(cartographic_from.latitude);
+
+        var lon_to = Cesium.Math.toDegrees(cartographic_to.longitude);
+        var lat_to = Cesium.Math.toDegrees(cartographic_to.latitude);
+
+        var lat1 = lat_from * _this.radiansPerDegree;
+        var lon1 = lon_from * _this.radiansPerDegree;
+        var lat2 = lat_to * _this.radiansPerDegree;
+        var lon2 = lon_to * _this.radiansPerDegree;
+        var angle = -Math.atan2(Math.sin(lon1 - lon2) * Math.cos(lat2), Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(lon1 - lon2));
+        if (angle < 0) {
+          angle += Math.PI * 2.0;
+        }
+        angle = angle * _this.degreesPerRadian;//角度
+        return angle;
+      },
+
+      getDistance(point1, point2){
+        var point1cartographic = Cesium.Cartographic.fromCartesian(point1);
+        var point2cartographic = Cesium.Cartographic.fromCartesian(point2);
+        /**根据经纬度计算出距离**/
+        var geodesic = new Cesium.EllipsoidGeodesic();
+        geodesic.setEndPoints(point1cartographic, point2cartographic);
+        var s = geodesic.surfaceDistance;
+        //返回两点之间的距离
+        s = Math.sqrt(Math.pow(s, 2) + Math.pow(point2cartographic.height - point1cartographic.height, 2));
+        return s;
+      },
+      //  清除
       clearDrawingBoard() {
         this.viewer.entities.removeAll();//删除全部
-        // var me = this;
-        // var primitives = me.viewer.entities;
-        // for (var i = 0; i <  me.tempEntities.length; i++) {
-        //   primitives.remove(me.tempEntities[i]);
-        // }
-        // me.tempEntities=[];
       },
-      //
-      // /**清除实体*/
-      // terminateShape(){
-      //   var $this = this;
-      //   $this.activeShapePoints.pop();//去除最后一个动态点
-      //   if($this.activeShapePoints.length){
-      //     // $this.drawShape($this.activeShapePoints);//绘制最终图的代码需要修改
-      //
-      //   }
-      //   $this.viewer.entities.remove($this.floatingPoint); //去除动态点图形（当前鼠标点）
-      //   $this.viewer.entities.remove($this.activeShape); //去除动态图形
-      //   $this.floatingPoint = undefined;
-      //   $this.activeShape = undefined;
-      //   $this.activeShapePoints = [];
-      // }
-
-
     }
   }
 </script>
