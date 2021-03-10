@@ -371,6 +371,111 @@
         this.viewer._cesiumWidget._creditContainer.style.display = 'none';
 
         this.handler = new Cesium.ScreenSpaceEventHandler(this.viewer.canvas);
+        //第一条航线
+//        var flightData= [{"longitude":114.54207,"latitude":30.67206,"height":-1},{"longitude":114.54202,"latitude":30.66802,"height":-1},{"longitude":114.54896,"latitude":30.65405,"height":-1},{"longitude":114.56185,"latitude":30.63212,"height":-2},{"longitude":114.56756,"latitude":30.61987,"height":-1},{"longitude":114.57712,"latitude":30.60163,"height":-1},{"longitude":114.59272,"latitude":30.57847,"height":-1},{"longitude":114.62799,"latitude":30.55966,"height":-1},{"longitude":114.64263,"latitude":30.56722,"height":-1},{"longitude":114.67968,"latitude":30.57833,"height":-1},{"longitude":114.70862,"latitude":30.58902,"height":-1},{"longitude":114.76289,"latitude":30.61804,"height":-1},{"longitude":114.79516,"latitude":30.61570,"height":-1},{"longitude":114.83342,"latitude":30.59835,"height":-1},{"longitude":114.84145,"latitude":30.57843,"height":-1},{"longitude":114.83960,"latitude":30.56437,"height":-1},{"longitude":114.83683,"latitude":30.53635,"height":-1},{"longitude":114.83397,"latitude":30.50823,"height":-1},{"longitude":114.83476,"latitude":30.48289,"height":-1},{"longitude":114.84023,"latitude":30.45833,"height":-1},{"longitude":114.85853,"latitude":30.43707,"height":-1},{"longitude":114.88539,"latitude":30.42023,"height":-1},{"longitude":114.89741,"latitude":30.41690,"height":-1},{"longitude":114.91089,"latitude":30.41498,"height":-1},{"longitude":114.94166,"latitude":30.41261,"height":-1},{"longitude":114.96872,"latitude":30.41106,"height":-1},{"longitude":115.01245,"latitude":30.41153,"height":-1},{"longitude":115.04500,"latitude":30.40619,"height":-1},{"longitude":115.06555,"latitude":30.39794,"height":-1},{"longitude":115.08789,"latitude":30.38173,"height":-1},{"longitude":115.10873,"latitude":30.35088,"height":-1},{"longitude":115.10847,"latitude":30.32160,"height":-1},{"longitude":115.08760,"latitude":30.28934,"height":-1},{"longitude":115.07826,"latitude":30.27200,"height":-1},{"longitude":115.07506,"latitude":30.26156,"height":-1},{"longitude":115.07691,"latitude":30.24325,"height":-1},{"longitude":115.09364,"latitude":30.22377,"height":-1},{"longitude":115.11237,"latitude":30.21495,"height":-1},{"longitude":115.15076,"latitude":30.21245,"height":-1},{"longitude":115.18405,"latitude":30.22289,"height":-1},{"longitude":115.21490,"latitude":30.21017,"height":-1},{"longitude":115.23034,"latitude":30.19283,"height":-1},{"longitude":115.24370,"latitude":30.18129,"height":-1},{"longitude":115.26195,"latitude":30.16000,"height":-1},{"longitude":115.27321,"latitude":30.14648,"height":-1}]
+////        第二条航线的经纬度
+        var flightData = [{"longitude":115.26390,"latitude":30.15192,"height":-1},{"longitude":115.25123,"latitude":30.16539,"height":-1},{"longitude":115.23922,"latitude":30.17797,"height":-1},{"longitude":115.23035,"latitude":30.18608,"height":-1},{"longitude":115.21618,"latitude":30.20479,"height":-1},{"longitude":115.19935,"latitude":30.21476,"height":-1},{"longitude":115.17668,"latitude":30.21768,"height":-1},{"longitude":115.15612,"latitude":30.21459,"height":-1},{"longitude":115.14390,"latitude":30.20889,"height":-1},{"longitude":115.12566,"latitude":30.20927,"height":-1},{"longitude":115.10630,"latitude":30.21259,"height":-1},{"longitude":115.08923,"latitude":30.22101,"height":-1},{"longitude":115.07676,"latitude":30.23179,"height":-1},{"longitude":115.07114,"latitude":30.24040,"height":-1},{"longitude":115.06793,"latitude":30.25458,"height":-1},{"longitude":115.07298,"latitude":30.27014,"height":-1},{"longitude":115.07917,"latitude":30.28469,"height":-1},{"longitude":115.08471,"latitude":30.29643,"height":-1},{"longitude":115.08498,"latitude":30.31843,"height":-1},{"longitude":115.08316,"latitude":30.33080,"height":-1},{"longitude":115.07613,"latitude":30.35094,"height":-1},{"longitude":115.05811,"latitude":30.37917,"height":-1},{"longitude":115.03532,"latitude":30.39796,"height":-1},{"longitude":115.00940,"latitude":30.40539,"height":-1},{"longitude":114.98450,"latitude":30.40351,"height":-1},{"longitude":114.94858,"latitude":30.40313,"height":-1},{"longitude":114.92275,"latitude":30.40954,"height":-1},{"longitude":114.89235,"latitude":30.41269,"height":-1},{"longitude":114.85739,"latitude":30.42360,"height":-1},{"longitude":114.84164,"latitude":30.43038,"height":-1},{"longitude":114.82849,"latitude":30.44543,"height":-1},{"longitude":114.82502,"latitude":30.46364,"height":-1},{"longitude":114.82501,"latitude":30.48692,"height":-1},{"longitude":114.82549,"latitude":30.49848,"height":-1},{"longitude":114.82782,"latitude":30.51665,"height":-1},{"longitude":114.83015,"latitude":30.53301,"height":-1},{"longitude":114.83233,"latitude":30.55918,"height":-1},{"longitude":114.83406,"latitude":30.57235,"height":-1},{"longitude":114.82183,"latitude":30.59913,"height":-1},{"longitude":114.80554,"latitude":30.60878,"height":-1},{"longitude":114.77815,"latitude":30.61422,"height":-1},{"longitude":114.75564,"latitude":30.60966,"height":-1},{"longitude":114.74401,"latitude":30.59999,"height":-1},{"longitude":114.73082,"latitude":30.58931,"height":-1},{"longitude":114.70874,"latitude":30.57887,"height":-1},{"longitude":114.67608,"latitude":30.57246,"height":-1},{"longitude":114.65197,"latitude":30.56909,"height":-1},{"longitude":114.62552,"latitude":30.55452,"height":-1},{"longitude":114.60471,"latitude":30.55901,"height":-1},{"longitude":114.58576,"latitude":30.57246,"height":-1},{"longitude":114.57345,"latitude":30.59102,"height":-1},{"longitude":114.56203,"latitude":30.61703,"height":-1},{"longitude":114.55570,"latitude":30.63393,"height":-1},{"longitude":114.54903,"latitude":30.64397,"height":-1},{"longitude":114.54207,"latitude":30.67206,"height":-1}]
+
+//点的个数较密集的第二条航道
+//        var flightData = [{"longitude":115.26975,"latitude":30.14760,"height":-1},
+//          {"longitude":115.26658,"latitude":30.15185,"height":-1},
+//          {"longitude":115.26195,"latitude":30.15644,"height":-1},
+//          {"longitude":115.25646,"latitude":30.16228,"height":-1},
+//          {"longitude":115.25213,"latitude":30.16721,"height":-1},
+//          {"longitude":115.24751,"latitude":30.17276,"height":-1},
+//          {"longitude":115.24220,"latitude":30.17748,"height":-1},
+//          {"longitude":115.23755,"latitude":30.17989,"height":-1},
+//          {"longitude":115.23297,"latitude":30.18379,"height":-1},
+//          {"longitude":115.22859,"latitude":30.18804,"height":-1},
+//          {"longitude":115.22558,"latitude":30.19693,"height":-1},
+//          {"longitude":115.22056,"latitude":30.20161,"height":-1},
+//          {"longitude":115.21515,"latitude":30.20840,"height":-1},
+//          {"longitude":115.20789,"latitude":30.21240,"height":-1},
+//          {"longitude":115.20116,"latitude":30.21671,"height":-1},
+//          {"longitude":115.18971,"latitude":30.22062,"height":-1},
+//          {"longitude":115.17726,"latitude":30.21912,"height":-1},
+//          {"longitude":115.16374,"latitude":30.21705,"height":-1},
+//          {"longitude":115.15962,"latitude":30.21855,"height":-1},
+//          {"longitude":115.15367,"latitude":30.21507,"height":-1},
+//          {"longitude":115.15032,"latitude":30.21187,"height":-1},
+//          {"longitude":115.14171,"latitude":30.21082,"height":-1},
+//          {"longitude":115.12911,"latitude":30.21186,"height":-1},
+//          {"longitude":115.12364,"latitude":30.21196,"height":-1},
+//          {"longitude":115.10882,"latitude":30.21421,"height":-1},
+//          {"longitude":115.09719,"latitude":30.21750,"height":-1},
+//          {"longitude":115.08797,"latitude":30.22425,"height":-1},
+//          {"longitude":115.07688,"latitude":30.23393,"height":-1},
+//          {"longitude":115.07139,"latitude":30.24408,"height":-1},
+//          {"longitude":115.07102,"latitude":30.25518,"height":-1},
+//          {"longitude":115.07333,"latitude":30.26587,"height":-1},
+//          {"longitude":115.07761,"latitude":30.27891,"height":-1},
+//          {"longitude":115.07875,"latitude":30.29568,"height":-1},
+//          {"longitude":115.07850,"latitude":30.31178,"height":-1},
+//          {"longitude":115.07975,"latitude":30.32844,"height":-1},
+//          {"longitude":115.07712,"latitude":30.34304,"height":-1},
+//          {"longitude":115.07019,"latitude":30.35782,"height":-1},
+//          {"longitude":115.06356,"latitude":30.36863,"height":-1},
+//          {"longitude":115.05421,"latitude":30.38260,"height":-1},
+//          {"longitude":115.03986,"latitude":30.39367,"height":-1},
+//          {"longitude":115.02362,"latitude":30.40179,"height":-1},
+//          {"longitude":115.00901,"latitude":30.40360,"height":-1},
+//          {"longitude":114.99281,"latitude":30.40201,"height":-1},
+//          {"longitude":114.97667,"latitude":30.40240,"height":-1},
+//          {"longitude":114.95702,"latitude":30.40236,"height":-1},
+//          {"longitude":114.94627,"latitude":30.40368,"height":-1},
+//          {"longitude":114.93114,"latitude":30.40770,"height":-1},
+//          {"longitude":114.91566,"latitude":30.40999,"height":-1},
+//          {"longitude":114.89645,"latitude":30.41193,"height":-1},
+//          {"longitude":114.88024,"latitude":30.41519,"height":-1},
+//          {"longitude":114.86765,"latitude":30.42093,"height":-1},
+//          {"longitude":114.85384,"latitude":30.42425,"height":-1},
+//          {"longitude":114.83640,"latitude":30.43211,"height":-1},
+//          {"longitude":114.83068,"latitude":30.43594,"height":-1},
+//          {"longitude":114.82724,"latitude":30.44198,"height":-1},
+//          {"longitude":114.82562,"latitude":30.44521,"height":-1},
+//          {"longitude":114.82484,"latitude":30.44936,"height":-1},
+//          {"longitude":114.82389,"latitude":30.45564,"height":-1},
+//          {"longitude":114.82406,"latitude":30.45992,"height":-1},
+//          {"longitude":114.82372,"latitude":30.47406,"height":-1},
+//          {"longitude":114.82516,"latitude":30.49165,"height":-1},
+//          {"longitude":114.82694,"latitude":30.50335,"height":-1},
+//          {"longitude":114.82906,"latitude":30.51491,"height":-1},
+//          {"longitude":114.83101,"latitude":30.52831,"height":-1},
+//          {"longitude":114.83284,"latitude":30.54196,"height":-1},
+//          {"longitude":114.83305,"latitude":30.55881,"height":-1},
+//          {"longitude":114.83321,"latitude":30.57829,"height":-1},
+//          {"longitude":114.82619,"latitude":30.59483,"height":-1},
+//          {"longitude":114.81247,"latitude":30.60426,"height":-1},
+//          {"longitude":114.80255,"latitude":30.60998,"height":-1},
+//          {"longitude":114.79638,"latitude":30.61162,"height":-1},
+//          {"longitude":114.79082,"latitude":30.61401,"height":-1},
+//          {"longitude":114.78054,"latitude":30.61543,"height":-1},
+//          {"longitude":114.77067,"latitude":30.61614,"height":-1},
+//          {"longitude":114.75874,"latitude":30.61249,"height":-1},
+//          {"longitude":114.74158,"latitude":30.60359,"height":-1},
+//          {"longitude":114.72967,"latitude":30.59167,"height":-1},
+//          {"longitude":114.70995,"latitude":30.58064,"height":-1},
+//          {"longitude":114.68611,"latitude":30.57672,"height":-1},
+//          {"longitude":114.66146,"latitude":30.57272,"height":-1},
+//          {"longitude":114.63528,"latitude":30.56356,"height":-1},
+//          {"longitude":114.62677,"latitude":30.55645,"height":-1},
+//          {"longitude":114.61444,"latitude":30.55796,"height":-1},
+//          {"longitude":114.60458,"latitude":30.56169,"height":-1},
+//          {"longitude":114.58576,"latitude":30.57697,"height":-1},
+//          {"longitude":114.57156,"latitude":30.59981,"height":-1},
+//          {"longitude":114.56362,"latitude":30.62035,"height":-1},
+//          {"longitude":114.55112,"latitude":30.64312,"height":-1},
+//          {"longitude":114.54914,"latitude":30.65246,"height":-1}
+//      ];
+        for (let i = 0; i < flightData.length; i++) {
+          const dataPoint = flightData[i];
+          const position = Cesium.Cartesian3.fromDegrees(dataPoint.longitude, dataPoint.latitude, dataPoint.height);//将地理坐标转换为天地图坐标
+          this.viewer.entities.add({
+            description: `Location: (${dataPoint.longitude}, ${dataPoint.latitude}, ${dataPoint.height})`,
+            position: position,
+            point: { pixelSize: 10, color: Cesium.Color.RED }
+          });
+        }
 
         let me = this;
         new Cesium.ScreenSpaceEventHandler(this.viewer.canvas).setInputAction(function (e) {
@@ -396,18 +501,18 @@
         this.handler.setInputAction(function (e) { //单击开始绘制
           if (me.draw_able) {
             if (me.index === 1) {//点单击
-              var text = '新建标点'
+              var text = '新建标点';
               me.createPoint2(e, text)//绘制点
             }
             else if (me.index === 2 || me.index === 5) {//线，测距单击
               var earthPosition = me.viewer.scene.camera.pickEllipsoid(e.position, me.viewer.scene.globe.ellipsoid);
               if (Cesium.defined(earthPosition)) {
                 if (me.activeShapePoints.length === 0) {
-                  if (me.index === 2) {
+                  if (me.index === 2) {//画线创建编号
                     var text = me.count.toString()
                     me.createPoint2(e, text);
                   }
-                  else {
+                  else {//测距添加起点
                     var text = '起点';
                     me.createPoint2(e, text);
                   }
@@ -438,9 +543,9 @@
                     else if (me.getDistance_able) {
                       var point = me.createPoint(e);//添加线上的点
                       if (me.activeShapePoints.length > 1) {//消除undefined bug
-                        me.text = me.line_text
+                        me.text = me.line_text//得到距离
                       }
-                      me.polylinePoint = me.viewer.entities.add({
+                      me.polylinePoint = me.viewer.entities.add({//显示节点
                         position: earthPosition,
                         label: {
                           text: '节点',
@@ -450,7 +555,7 @@
                         }
                       });
                     }
-                    me.viewer.entities.add({
+                    me.viewer.entities.add({//显示新建画线或者距离
                       position: me.polylineCenter,
                       label: {
                         text: me.text,
@@ -595,60 +700,8 @@
         }
         return s + 'm'
       },
-      //  测面
-//      SphericalPolygonAreaMeters(points) {//计算出的面积有问题
-//        var _this = this
-//        var totalAngle = 0;
-//        for (var i = 0; i < points.length; i++) {
-//          var j = (i + 1) % points.length;
-//          var k = (i + 2) % points.length;
-//          totalAngle += _this.Angle(points[i], points[j], points[k]);
-//        }
-//        var planarTotalAngle = (points.length - 2) * 180.0;
-//        var sphericalExcess = totalAngle - planarTotalAngle;
-//        if (sphericalExcess > 420.0) {
-//          totalAngle = points.length * 360.0 - totalAngle;
-//          sphericalExcess = totalAngle - planarTotalAngle;
-//        } else if (sphericalExcess > 300.0 && sphericalExcess < 420.0) {
-//          sphericalExcess = Math.abs(360.0 - sphericalExcess);
-//        }
-//        return sphericalExcess * _this.radiansPerDegree * _this.earthRadiusMeters * _this.earthRadiusMeters;
-//      },
-//
-//      Angle(p1, p2, p3) {
-//          var _this = this
-//        var bearing21 = _this.Bearing(p2, p1);
-//        var bearing23 = _this.Bearing(p2, p3);
-//        var angle = bearing21 - bearing23;
-//        if (angle < 0) {
-//          angle += 360;
-//        }
-//        return angle;
-//      },
-//
-//      Bearing(from, to) {
-//          var _this = this
-//        var cartographic1 = _this.viewer.scene.globe.ellipsoid.cartesianToCartographic(from);
-////        var cartographic1 = Cesium.Cartographic.fromCartesian(from);
-//        var log_String1 = Cesium.Math.toDegrees(cartographic1.longitude).toFixed(9);//经度
-//        var lat_String1 = Cesium.Math.toDegrees(cartographic1.latitude).toFixed(8);//纬度
-//        var cartographic2 = _this.viewer.scene.globe.ellipsoid.cartesianToCartographic(to);
-////        var cartographic2 = Cesium.Cartographic.fromCartesian(to);
-//        var log_String2 = Cesium.Math.toDegrees(cartographic2.longitude).toFixed(9);//经度
-//        var lat_String2 = Cesium.Math.toDegrees(cartographic2.latitude).toFixed(8);//纬度
-//        var lat1 = lat_String1 * _this.radiansPerDegree;
-//        var lon1 = log_String1 * _this.radiansPerDegree;
-//        var lat2 = lat_String2 * _this.radiansPerDegree;
-//        var lon2 = log_String2 * _this.radiansPerDegree;
-//        var angle = -Math.atan2(Math.sin(lon1 - lon2) * Math.cos(lat2), Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(lon1 - lon2));
-//        if (angle < 0) {
-//          angle += Math.PI * 2.0;
-//        }
-//        angle = angle * _this.degreesPerRadian;
-//        return angle;
-//      },
 
-////      新的测面公式
+//    新的测面公式
       getArea(points) {
         var res = 0;
         var _this = this
@@ -657,12 +710,10 @@
           var j = (i + 1) % points.length;
           var k = (i + 2) % points.length;
           var totalAngle = _this.Angle(points[i], points[j], points[k]);
-
           var dis_temp1 = _this.getDistance(points[i], points[j]);
           var dis_temp2 = _this.getDistance(points[j], points[k]);
           res += dis_temp1 * dis_temp2 * Math.abs(Math.sin(totalAngle));
         }
-
         return (res / 1000000.0).toFixed(8);
       },
 
