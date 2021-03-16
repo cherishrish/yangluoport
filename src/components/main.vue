@@ -101,25 +101,28 @@
               <a href="javascript:">迁徙图</a>
             </Dropdown-item>
             <Dropdown-item>
-              <a href="javascript:">雷达扫描</a>
+              <a href="javascript:" @click="showRadarScan">雷达扫描</a>
             </Dropdown-item>
             <Dropdown-item>
-              <a href="javascript:">圆形扫描</a>
+              <a href="javascript:" @click="showCircleScan">圆形扫描</a>
             </Dropdown-item>
             <Dropdown-item>
-              <a href="javascript:">双圆涟漪</a>
+              <a href="javascript:" @click="showDoubleCircleWave">双圆涟漪</a>
             </Dropdown-item>
             <Dropdown-item>
-              <a href="javascript:">闪圆</a>
+              <a href="javascript:" @click="flashRound">闪点</a>
             </Dropdown-item>
             <Dropdown-item>
-              <a href="javascript:">动态线和墙</a>
+              <a href="javascript:" @click="flashCircle">闪圆</a>
             </Dropdown-item>
             <Dropdown-item>
-              <a href="javascript:">道路数据</a>npm
+              <a href="javascript:" @click="addLine">动态线和墙</a>
             </Dropdown-item>
             <Dropdown-item>
-              <a href="javascript:">html元素</a>
+              <a href="javascript:">道路数据</a>
+            </Dropdown-item>
+            <Dropdown-item>
+              <a href="javascript:" @click="addHtml">html元素</a>
             </Dropdown-item>
             <Dropdown-item>
               <a href="javascript:">弹窗</a>
@@ -225,40 +228,489 @@
         earthRadiusMeters: 6371000.0,
         radiansPerDegree: Math.PI / 180.0,
         degreesPerRadian: 180.0 / Math.PI,
-        text: null,//需要显示的文字
+        text: null,//需要显示的文字,
+        radarsScans: [],
+        //双圆涟漪的data
+        data: {
+          id: "[1,2]",
+          lon: 114.292832,
+          lat: 30.584519,
+          height: 500,
+          maxR: 3000,
+          minR: 0,//最好为0
+          deviationR: 10,//差值 差值也大 速度越快
+          eachInterval: 2000,//两个圈的时间间隔
+          imageUrl: "../../static/redCircle.png"//波纹图片
+        }
       }
     },
     mounted() {
       this.init();
     },
     methods: {
+      //双圆涟漪
+      showDoubleCircleWave() {//扩散效果
+        var _this = this
+        //添加中心线
+        _this.viewer.entities.add({
+          name: "中心线",
+          polyline: {
+            positions: Cesium.Cartesian3.fromDegreesArrayHeights([
+              _this.data.lon, _this.data.lat, 0,
+              _this.data.lon, _this.data.lat, 5000,]//中心线的高度
+            ),
+            width: 4,
+            material: new Cesium.PolylineGlowMaterialProperty({ //发光线
+              glowPower: 0.1,
+              color: Cesium.Color.RED
+            })
+          }
+        });
+        var r1 = _this.data.minR, r2 = _this.data.minR;
+
+        function changeR1() { //这是callback，参数不能内传
+          r1 = r1 + _this.data.deviationR;
+          if (r1 >= _this.data.maxR) {
+            r1 = _this.data.minR;
+          }
+          return r1;
+        }//通过改变圆的大小来实现波纹效果
+
+        function changeR2() {
+          r2 = r2 + _this.data.deviationR;
+          if (r2 >= _this.data.maxR) {
+            r2 = _this.data.minR;
+          }
+          return r2;
+        }//通过改变圆的大小来实现波纹效果
+
+        _this.viewer.entities.add({
+          id: _this.data.id,
+          name: "",
+          position: Cesium.Cartesian3.fromDegrees(_this.data.lon, _this.data.lat, _this.data.height),
+          ellipse: {
+            semiMinorAxis: new Cesium.CallbackProperty(changeR1, false),
+            semiMajorAxis: new Cesium.CallbackProperty(changeR1, false),
+            height: _this.data.height,
+            material: new Cesium.ImageMaterialProperty({
+              image: _this.data.imageUrl,
+              repeat: new Cesium.Cartesian2(1.0, 1.0),
+              transparent: true,
+              color: new Cesium.CallbackProperty(function () {
+                var alp = 1 - r1 / _this.data.maxR;
+                return Cesium.Color.WHITE.withAlpha(alp)  //entity的颜色透明 并不影响材质，并且 entity也会透明哦
+              }, false)
+            })
+          }
+        });
+        //延时效果
+        setTimeout(function () {
+          //第二个圆开始跑
+          _this.viewer.entities.add({
+            name: "",
+            position: Cesium.Cartesian3.fromDegrees(_this.data.lon, _this.data.lat, _this.data.height),
+            ellipse: {
+              semiMinorAxis: new Cesium.CallbackProperty(changeR2, false),
+              semiMajorAxis: new Cesium.CallbackProperty(changeR2, false),
+              height: _this.data.height,
+              material: new Cesium.ImageMaterialProperty({
+                image: _this.data.imageUrl,
+                repeat: new Cesium.Cartesian2(1.0, 1.0),
+                transparent: true,
+                color: new Cesium.CallbackProperty(function () {
+                  var alp = 1;
+                  alp = 1 - r2 / _this.data.maxR;
+                  return Cesium.Color.WHITE.withAlpha(alp)
+                }, false)
+              })
+            }
+          });
+        }, _this.data.eachInterval)
+      },
+      //实现动态线和墙
+      //添加静态的线
+      addLine() {
+        var _this = this;
+        var addline = _this.viewer.entities.add({
+          polyline: {
+            positions: Cesium.Cartesian3.fromDegreesArrayHeights( [
+              114.292832, 30.584519,0, //0 表示高度
+              114.292832 + 1, 30.584519, 0,
+              114.292832 + 1, 30.584519 + 1, 0,
+              114.292832 + 2, 30.584519+1, 0,
+              114.292832 + 2, 30.584519 + 2, 0
+              ],),
+              width:5,
+              clampToGround : true,//贴地
+              material: Cesium.Color.RED,
+          }
+        });
+      },
+      //添加Html
+      addHtml(){
+        // var _this = this
+        // _this.viewer.entities.add({
+        //   html: {
+        //     position: [114.292832, 30.584519, 20],
+        //     element: `<div class="html-box">2</div>`,
+        //     offset: [10, 10]
+        //   }
+        // });
+      },
+      //实现雷达效果
+      showRadarScan() {
+        let _this = this
+        var cartographicCenter = new Cesium.Cartographic(Cesium.Math.toRadians(114.292832), Cesium.Math.toRadians(30.584519), 32);//添加雷达扫描效果的点
+        var scanColor = new Cesium.Color(1.0, 0.0, 0.0, 1);
+
+        var lastStage = _this.addRadarScanPostStage(_this.viewer, cartographicCenter, 1000, scanColor, 3000);
+      },
+      /*
+       添加扩散效果扫描线
+       viewer
+       cartographicCenter 扫描中心
+       radius  半径 米
+       scanColor 扫描颜色
+       duration 持续时间 毫秒
+       */
+      addRadarScanPostStage(viewer, cartographicCenter, radius, scanColor, duration) {
+        let _this = this
+        var _Cartesian3Center = Cesium.Cartographic.toCartesian(cartographicCenter);
+        var _Cartesian4Center = new Cesium.Cartesian4(_Cartesian3Center.x, _Cartesian3Center.y, _Cartesian3Center.z, 1);
+
+        var _CartographicCenter1 = new Cesium.Cartographic(cartographicCenter.longitude, cartographicCenter.latitude, cartographicCenter.height + 500);
+        var _Cartesian3Center1 = Cesium.Cartographic.toCartesian(_CartographicCenter1);
+        var _Cartesian4Center1 = new Cesium.Cartesian4(_Cartesian3Center1.x, _Cartesian3Center1.y, _Cartesian3Center1.z, 1);
+
+        var _CartographicCenter2 = new Cesium.Cartographic(cartographicCenter.longitude + Cesium.Math.toRadians(0.001), cartographicCenter.latitude, cartographicCenter.height);
+        var _Cartesian3Center2 = Cesium.Cartographic.toCartesian(_CartographicCenter2);
+        var _Cartesian4Center2 = new Cesium.Cartesian4(_Cartesian3Center2.x, _Cartesian3Center2.y, _Cartesian3Center2.z, 1);
+        var _RotateQ = new Cesium.Quaternion();
+        var _RotateM = new Cesium.Matrix3();
+
+        var _time = (new Date()).getTime();
+
+        var _scratchCartesian4Center = new Cesium.Cartesian4();
+        var _scratchCartesian4Center1 = new Cesium.Cartesian4();
+        var _scratchCartesian4Center2 = new Cesium.Cartesian4();
+        var _scratchCartesian3Normal = new Cesium.Cartesian3();
+        var _scratchCartesian3Normal1 = new Cesium.Cartesian3();
+
+        var ScanPostStage = new Cesium.PostProcessStage({
+          fragmentShader: _this.getRadarScanShader(),
+          uniforms: {
+            u_scanCenterEC: function () {
+              return Cesium.Matrix4.multiplyByVector(viewer.camera._viewMatrix, _Cartesian4Center, _scratchCartesian4Center);
+            },
+            u_scanPlaneNormalEC: function () {
+              var temp = Cesium.Matrix4.multiplyByVector(viewer.camera._viewMatrix, _Cartesian4Center, _scratchCartesian4Center);
+              var temp1 = Cesium.Matrix4.multiplyByVector(viewer.camera._viewMatrix, _Cartesian4Center1, _scratchCartesian4Center1);
+              _scratchCartesian3Normal.x = temp1.x - temp.x;
+              _scratchCartesian3Normal.y = temp1.y - temp.y;
+              _scratchCartesian3Normal.z = temp1.z - temp.z;
+
+              Cesium.Cartesian3.normalize(_scratchCartesian3Normal, _scratchCartesian3Normal);
+              return _scratchCartesian3Normal;
+            },
+            u_radius: radius,
+            u_scanLineNormalEC: function () {
+              var temp = Cesium.Matrix4.multiplyByVector(viewer.camera._viewMatrix, _Cartesian4Center, _scratchCartesian4Center);
+              var temp1 = Cesium.Matrix4.multiplyByVector(viewer.camera._viewMatrix, _Cartesian4Center1, _scratchCartesian4Center1);
+              var temp2 = Cesium.Matrix4.multiplyByVector(viewer.camera._viewMatrix, _Cartesian4Center2, _scratchCartesian4Center2);
+
+              _scratchCartesian3Normal.x = temp1.x - temp.x;
+              _scratchCartesian3Normal.y = temp1.y - temp.y;
+              _scratchCartesian3Normal.z = temp1.z - temp.z;
+
+              Cesium.Cartesian3.normalize(_scratchCartesian3Normal, _scratchCartesian3Normal);
+
+              _scratchCartesian3Normal1.x = temp2.x - temp.x;
+              _scratchCartesian3Normal1.y = temp2.y - temp.y;
+              _scratchCartesian3Normal1.z = temp2.z - temp.z;
+
+              var tempTime = (((new Date()).getTime() - _time) % duration) / duration;
+              Cesium.Quaternion.fromAxisAngle(_scratchCartesian3Normal, tempTime * Cesium.Math.PI * 2, _RotateQ);
+              Cesium.Matrix3.fromQuaternion(_RotateQ, _RotateM);
+              Cesium.Matrix3.multiplyByVector(_RotateM, _scratchCartesian3Normal1, _scratchCartesian3Normal1);
+              Cesium.Cartesian3.normalize(_scratchCartesian3Normal1, _scratchCartesian3Normal1);
+              return _scratchCartesian3Normal1;
+            },
+            u_scanColor: scanColor
+          }
+        });
+        _this.viewer.scene.postProcessStages.add(ScanPostStage);
+
+        return ScanPostStage;
+      },
+
+      //雷达扫描线效果Shader
+      getRadarScanShader() {
+        var _this = this
+        var scanSegmentShader =
+          "uniform sampler2D colorTexture;\n" +
+          "uniform sampler2D depthTexture;\n" +
+          "varying vec2 v_textureCoordinates;\n" +
+          "uniform vec4 u_scanCenterEC;\n" +
+          "uniform vec3 u_scanPlaneNormalEC;\n" +
+          "uniform vec3 u_scanLineNormalEC;\n" +
+          "uniform float u_radius;\n" +
+          "uniform vec4 u_scanColor;\n" +
+
+          "vec4 toEye(in vec2 uv, in float depth)\n" +
+          " {\n" +
+          " vec2 xy = vec2((uv.x * 2.0 - 1.0),(uv.y * 2.0 - 1.0));\n" +
+          " vec4 posInCamera =czm_inverseProjection * vec4(xy, depth, 1.0);\n" +
+          " posInCamera =posInCamera / posInCamera.w;\n" +
+          " return posInCamera;\n" +
+          " }\n" +
+
+          "bool isPointOnLineRight(in vec3 ptOnLine, in vec3 lineNormal, in vec3 testPt)\n" +
+          "{\n" +
+          "vec3 v01 = testPt - ptOnLine;\n" +
+          "normalize(v01);\n" +
+          "vec3 temp = cross(v01, lineNormal);\n" +
+          "float d = dot(temp, u_scanPlaneNormalEC);\n" +
+          "return d > 0.5;\n" +
+          "}\n" +
+
+          "vec3 pointProjectOnPlane(in vec3 planeNormal, in vec3 planeOrigin, in vec3 point)\n" +
+          "{\n" +
+          "vec3 v01 = point -planeOrigin;\n" +
+          "float d = dot(planeNormal, v01) ;\n" +
+          "return (point - planeNormal * d);\n" +
+          "}\n" +
+
+          "float distancePointToLine(in vec3 ptOnLine, in vec3 lineNormal, in vec3 testPt)\n" +
+          "{\n" +
+          "vec3 tempPt = pointProjectOnPlane(lineNormal, ptOnLine, testPt);\n" +
+          "return length(tempPt - ptOnLine);\n" +
+          "}\n" +
+
+          "float getDepth(in vec4 depth)\n" +
+          "{\n" +
+          "float z_window = czm_unpackDepth(depth);\n" +
+          "z_window = czm_reverseLogDepth(z_window);\n" +
+          "float n_range = czm_depthRange.near;\n" +
+          "float f_range = czm_depthRange.far;\n" +
+          "return (2.0 * z_window - n_range - f_range) / (f_range - n_range);\n" +
+          "}\n" +
+
+          "void main()\n" +
+          "{\n" +
+          "gl_FragColor = texture2D(colorTexture, v_textureCoordinates);\n" +
+          "float depth = getDepth( texture2D(depthTexture, v_textureCoordinates));\n" +
+          "vec4 viewPos = toEye(v_textureCoordinates, depth);\n" +
+          "vec3 prjOnPlane = pointProjectOnPlane(u_scanPlaneNormalEC.xyz, u_scanCenterEC.xyz, viewPos.xyz);\n" +
+          "float dis = length(prjOnPlane.xyz - u_scanCenterEC.xyz);\n" +
+          "float twou_radius = u_radius * 2.0;\n" +
+          "if(dis < u_radius)\n" +
+          "{\n" +
+          "float f0 = 1.0 -abs(u_radius - dis) / u_radius;\n" +
+          "f0 = pow(f0, 64.0);\n" +
+          "vec3 lineEndPt = vec3(u_scanCenterEC.xyz) + u_scanLineNormalEC * u_radius;\n" +
+          "float f = 0.0;\n" +
+          "if(isPointOnLineRight(u_scanCenterEC.xyz, u_scanLineNormalEC.xyz, prjOnPlane.xyz))\n" +
+          "{\n" +
+          "float dis1= length(prjOnPlane.xyz - lineEndPt);\n" +
+          "f = abs(twou_radius -dis1) / twou_radius;\n" +
+          "f = pow(f, 3.0);\n" +
+          "}\n" +
+          "gl_FragColor = mix(gl_FragColor, u_scanColor, f + f0);\n" +
+          "}\n" +
+          "}\n";
+        return scanSegmentShader;
+      },
+      //圆形扫描
+      showCircleScan() {
+        let _this = this
+        var cartographicCenter = new Cesium.Cartographic(Cesium.Math.toRadians(114.292832), Cesium.Math.toRadians(30.584519), 32);
+        var scanColor = new Cesium.Color(0.0, 1.0, 0.0, 1);
+        var lastStage = _this.addCircleScanPostStage(_this.viewer, cartographicCenter, 1000, scanColor, 4000);
+      },
+      //添加圆形扫描线
+      addCircleScanPostStage(viewer, cartographicCenter, maxRadius, scanColor, duration) {
+        let _this = this
+        var _Cartesian3Center = Cesium.Cartographic.toCartesian(cartographicCenter);
+        var _Cartesian4Center = new Cesium.Cartesian4(_Cartesian3Center.x, _Cartesian3Center.y, _Cartesian3Center.z, 1);
+
+        var _CartograhpicCenter1 = new Cesium.Cartographic(cartographicCenter.longitude, cartographicCenter.latitude, cartographicCenter.height + 500);
+        var _Cartesian3Center1 = Cesium.Cartographic.toCartesian(_CartograhpicCenter1);
+        var _Cartesian4Center1 = new Cesium.Cartesian4(_Cartesian3Center1.x, _Cartesian3Center1.y, _Cartesian3Center1.z, 1);
+
+        var _time = (new Date()).getTime();
+
+        var _scratchCartesian4Center = new Cesium.Cartesian4();
+        var _scratchCartesian4Center1 = new Cesium.Cartesian4();
+        var _scratchCartesian3Normal = new Cesium.Cartesian3();
+
+
+        var ScanPostStage = new Cesium.PostProcessStage({
+          fragmentShader: _this.getScanSegmentShader(),
+          uniforms: {
+            u_scanCenterEC: function () {
+              var temp = Cesium.Matrix4.multiplyByVector(viewer.camera._viewMatrix, _Cartesian4Center, _scratchCartesian4Center);
+              return temp;
+            },
+            u_scanPlaneNormalEC: function () {
+              var temp = Cesium.Matrix4.multiplyByVector(viewer.camera._viewMatrix, _Cartesian4Center, _scratchCartesian4Center);
+              var temp1 = Cesium.Matrix4.multiplyByVector(viewer.camera._viewMatrix, _Cartesian4Center1, _scratchCartesian4Center1);
+
+              _scratchCartesian3Normal.x = temp1.x - temp.x;
+              _scratchCartesian3Normal.y = temp1.y - temp.y;
+              _scratchCartesian3Normal.z = temp1.z - temp.z;
+
+              Cesium.Cartesian3.normalize(_scratchCartesian3Normal, _scratchCartesian3Normal);
+
+              return _scratchCartesian3Normal;
+            },
+            u_radius: function () {
+              return maxRadius * (((new Date()).getTime() - _time) % duration) / duration;
+            },
+            u_scanColor: scanColor
+          }
+        });
+
+        _this.viewer.scene.postProcessStages.add(ScanPostStage);
+        return ScanPostStage;
+      },
+      //扩散效果Shader
+      /*
+       添加雷达扫描线
+       viewer
+       cartographicCenter 扫描中心
+       radius  半径 米
+       scanColor 扫描颜色
+       duration 持续时间 毫秒
+       */
+      getScanSegmentShader() {
+        var scanSegmentShader = "\n\
+                    uniform sampler2D colorTexture;\n\
+                    uniform sampler2D depthTexture;\n\
+                    varying vec2 v_textureCoordinates;\n\
+                    uniform vec4 u_scanCenterEC;\n\
+                    uniform vec3 u_scanPlaneNormalEC;\n\
+                    uniform float u_radius;\n\
+                    uniform vec4 u_scanColor;\n\
+                    \n\
+                    vec4 toEye(in vec2 uv,in float depth)\n\
+                    {\n\
+                                vec2 xy = vec2((uv.x * 2.0 - 1.0),(uv.y * 2.0 - 1.0));\n\
+                                vec4 posIncamera = czm_inverseProjection * vec4(xy,depth,1.0);\n\
+                                posIncamera = posIncamera/posIncamera.w;\n\
+                                return posIncamera;\n\
+                    }\n\
+                    \n\
+                    vec3 pointProjectOnPlane(in vec3 planeNormal,in vec3 planeOrigin,in vec3 point)\n\
+                    {\n\
+                                vec3 v01 = point - planeOrigin;\n\
+                                float d = dot(planeNormal,v01);\n\
+                                return (point-planeNormal * d);\n\
+                    }\n\
+                    float getDepth(in vec4 depth)\n\
+                    {\n\
+                                float z_window = czm_unpackDepth(depth);\n\
+                                z_window = czm_reverseLogDepth(z_window);\n\
+                                float n_range = czm_depthRange.near;\n\
+                                float f_range = czm_depthRange.far;\n\
+                                return (2.0 * z_window - n_range - f_range)/(f_range-n_range);\n\
+                    } \n\
+                    void main()\n\
+                    {\n\
+                                gl_FragColor = texture2D(colorTexture,v_textureCoordinates);\n\
+                                float depth = getDepth(texture2D(depthTexture,v_textureCoordinates));\n\
+                                vec4 viewPos = toEye(v_textureCoordinates,depth);\n\
+                                vec3 prjOnPlane = pointProjectOnPlane(u_scanPlaneNormalEC.xyz,u_scanCenterEC.xyz,viewPos.xyz);\n\
+                                float dis = length(prjOnPlane.xyz - u_scanCenterEC.xyz);\n\
+                                if(dis<u_radius)\n\
+                                {\n\
+                                    float f = 1.0-abs(u_radius - dis )/ u_radius;\n\
+                                    f = pow(f,4.0);\n\
+                                    gl_FragColor = mix(gl_FragColor,u_scanColor,f);\n\
+                                }\n\
+                    } \n\ ";
+        return scanSegmentShader;
+      },
+      //添加圆形区域闪烁
+      flashCircle() {
+        var x = 1;
+        var flog = true;
+        let _this = this
+        _this.viewer.entities.add({
+          name: "圆形区域闪烁",
+          position: Cesium.Cartesian3.fromDegrees(114.292832, 30.584519, 0),
+          ellipse: {
+            semiMinorAxis: 2000.0,//圆的大小
+            semiMajorAxis: 2000.0,
+            height: 0,
+            material: new Cesium.ColorMaterialProperty(new Cesium.CallbackProperty(function () {
+              if (flog) {
+                x = x - 0.05;
+                if (x <= 0) {
+                  flog = false;
+                }
+              } else {
+                x = x + 0.05;
+                if (x >= 1) {
+                  flog = true;
+                }
+              }
+              return Cesium.Color.RED.withAlpha(x);//通过循环改变材质实现闪烁效果
+            }, false))
+          }
+        });
+      },
+//        闪圆,问题在于如何关闭
+      flashRound() {
+        var x = 1;
+        var flog = true;
+        let _this = this
+        _this.viewer.entities.add({
+          name: "圆点闪烁",
+          position: Cesium.Cartesian3.fromDegrees(114.292832 + 0.03, 30.584519 + 0.03, 0),//圆点闪烁的位置
+          point: {
+            show: true, // default
+            color: new Cesium.CallbackProperty(function () {
+              if (flog) {
+                x = x - 0.05;
+                if (x <= 0) {
+                  flog = false;
+                }
+              } else {
+                x = x + 0.05;
+                if (x >= 1) {
+                  flog = true;
+                }
+              }
+              return Cesium.Color.RED.withAlpha(x);//通过循环改变透明度实现闪烁效果
+            }, false),
+            pixelSize: 20, // 闪圆的大小
+            outlineWidth: 0
+          }
+        });
+      },
+      //画面，画点等函数
       draw_picture(index) {
         this.draw_able = true
         var me = this
         if (index === 1) {//画点
           this.index = 1
-        }
-        else if (index === 2) {//画线
+        } else if (index === 2) {//画线
           this.draw_able = true
           this.line_able = true
           this.index = 2
-        }
-        else if (index === 3) {//画面
+        } else if (index === 3) {//画面
           this.draw_able = true
           this.polygon_able = true
           this.index = 3
-        }
-        else if (index === 4) {//画矩形
+        } else if (index === 4) {//画矩形
           this.draw_able = true
           this.rectangle_able = true
           this.index = 4
-        }
-        else if (index === 5) {//测距
+        } else if (index === 5) {//测距
           this.draw_able = true
           this.getDistance_able = true
           this.index = 5
-        }
-        else if (index === 6) {//测面
+        } else if (index === 6) {//测面
           this.draw_able = true
           this.getArea_able = true
           this.index = 6
@@ -269,8 +721,7 @@
             me.polygon_able = false
             me.getArea_able = false
             me.rectangle_able = false
-          }
-          else if (me.getDistance_able) {
+          } else if (me.getDistance_able) {
             me.polylineLastPoint = me.activeShapePoints[me.activeShapePoints.length - 1];//得到最后一个点
             me.viewer.entities.remove(me.polylinePoint);//移除最后一个节点，换成终点
             me.polylinePoint = me.viewer.entities.add({
@@ -301,11 +752,9 @@
             if (me.polygon_able) {
               me.createPolygon(me.activeShapePoints);//绘制最终面
               me.text = '新建画面'
-            }
-            else if (me.rectangle_able) {
+            } else if (me.rectangle_able) {
               me.text = '新建矩形'
-            }
-            else if (me.getArea_able) {
+            } else if (me.getArea_able) {
               me.createPolygon(me.activeShapePoints);//绘制最终面
               var area = ((me.getArea(me.activeShapePoints)) * 1000000).toFixed(4) + '平方米';//原面积的单位为平方公里
               me.text = area;
@@ -374,7 +823,115 @@
         //第一条航线
 //        var flightData= [{"longitude":114.54207,"latitude":30.67206,"height":-1},{"longitude":114.54202,"latitude":30.66802,"height":-1},{"longitude":114.54896,"latitude":30.65405,"height":-1},{"longitude":114.56185,"latitude":30.63212,"height":-2},{"longitude":114.56756,"latitude":30.61987,"height":-1},{"longitude":114.57712,"latitude":30.60163,"height":-1},{"longitude":114.59272,"latitude":30.57847,"height":-1},{"longitude":114.62799,"latitude":30.55966,"height":-1},{"longitude":114.64263,"latitude":30.56722,"height":-1},{"longitude":114.67968,"latitude":30.57833,"height":-1},{"longitude":114.70862,"latitude":30.58902,"height":-1},{"longitude":114.76289,"latitude":30.61804,"height":-1},{"longitude":114.79516,"latitude":30.61570,"height":-1},{"longitude":114.83342,"latitude":30.59835,"height":-1},{"longitude":114.84145,"latitude":30.57843,"height":-1},{"longitude":114.83960,"latitude":30.56437,"height":-1},{"longitude":114.83683,"latitude":30.53635,"height":-1},{"longitude":114.83397,"latitude":30.50823,"height":-1},{"longitude":114.83476,"latitude":30.48289,"height":-1},{"longitude":114.84023,"latitude":30.45833,"height":-1},{"longitude":114.85853,"latitude":30.43707,"height":-1},{"longitude":114.88539,"latitude":30.42023,"height":-1},{"longitude":114.89741,"latitude":30.41690,"height":-1},{"longitude":114.91089,"latitude":30.41498,"height":-1},{"longitude":114.94166,"latitude":30.41261,"height":-1},{"longitude":114.96872,"latitude":30.41106,"height":-1},{"longitude":115.01245,"latitude":30.41153,"height":-1},{"longitude":115.04500,"latitude":30.40619,"height":-1},{"longitude":115.06555,"latitude":30.39794,"height":-1},{"longitude":115.08789,"latitude":30.38173,"height":-1},{"longitude":115.10873,"latitude":30.35088,"height":-1},{"longitude":115.10847,"latitude":30.32160,"height":-1},{"longitude":115.08760,"latitude":30.28934,"height":-1},{"longitude":115.07826,"latitude":30.27200,"height":-1},{"longitude":115.07506,"latitude":30.26156,"height":-1},{"longitude":115.07691,"latitude":30.24325,"height":-1},{"longitude":115.09364,"latitude":30.22377,"height":-1},{"longitude":115.11237,"latitude":30.21495,"height":-1},{"longitude":115.15076,"latitude":30.21245,"height":-1},{"longitude":115.18405,"latitude":30.22289,"height":-1},{"longitude":115.21490,"latitude":30.21017,"height":-1},{"longitude":115.23034,"latitude":30.19283,"height":-1},{"longitude":115.24370,"latitude":30.18129,"height":-1},{"longitude":115.26195,"latitude":30.16000,"height":-1},{"longitude":115.27321,"latitude":30.14648,"height":-1}]
 ////        第二条航线的经纬度
-        var flightData = [{"longitude":115.26390,"latitude":30.15192,"height":-1},{"longitude":115.25123,"latitude":30.16539,"height":-1},{"longitude":115.23922,"latitude":30.17797,"height":-1},{"longitude":115.23035,"latitude":30.18608,"height":-1},{"longitude":115.21618,"latitude":30.20479,"height":-1},{"longitude":115.19935,"latitude":30.21476,"height":-1},{"longitude":115.17668,"latitude":30.21768,"height":-1},{"longitude":115.15612,"latitude":30.21459,"height":-1},{"longitude":115.14390,"latitude":30.20889,"height":-1},{"longitude":115.12566,"latitude":30.20927,"height":-1},{"longitude":115.10630,"latitude":30.21259,"height":-1},{"longitude":115.08923,"latitude":30.22101,"height":-1},{"longitude":115.07676,"latitude":30.23179,"height":-1},{"longitude":115.07114,"latitude":30.24040,"height":-1},{"longitude":115.06793,"latitude":30.25458,"height":-1},{"longitude":115.07298,"latitude":30.27014,"height":-1},{"longitude":115.07917,"latitude":30.28469,"height":-1},{"longitude":115.08471,"latitude":30.29643,"height":-1},{"longitude":115.08498,"latitude":30.31843,"height":-1},{"longitude":115.08316,"latitude":30.33080,"height":-1},{"longitude":115.07613,"latitude":30.35094,"height":-1},{"longitude":115.05811,"latitude":30.37917,"height":-1},{"longitude":115.03532,"latitude":30.39796,"height":-1},{"longitude":115.00940,"latitude":30.40539,"height":-1},{"longitude":114.98450,"latitude":30.40351,"height":-1},{"longitude":114.94858,"latitude":30.40313,"height":-1},{"longitude":114.92275,"latitude":30.40954,"height":-1},{"longitude":114.89235,"latitude":30.41269,"height":-1},{"longitude":114.85739,"latitude":30.42360,"height":-1},{"longitude":114.84164,"latitude":30.43038,"height":-1},{"longitude":114.82849,"latitude":30.44543,"height":-1},{"longitude":114.82502,"latitude":30.46364,"height":-1},{"longitude":114.82501,"latitude":30.48692,"height":-1},{"longitude":114.82549,"latitude":30.49848,"height":-1},{"longitude":114.82782,"latitude":30.51665,"height":-1},{"longitude":114.83015,"latitude":30.53301,"height":-1},{"longitude":114.83233,"latitude":30.55918,"height":-1},{"longitude":114.83406,"latitude":30.57235,"height":-1},{"longitude":114.82183,"latitude":30.59913,"height":-1},{"longitude":114.80554,"latitude":30.60878,"height":-1},{"longitude":114.77815,"latitude":30.61422,"height":-1},{"longitude":114.75564,"latitude":30.60966,"height":-1},{"longitude":114.74401,"latitude":30.59999,"height":-1},{"longitude":114.73082,"latitude":30.58931,"height":-1},{"longitude":114.70874,"latitude":30.57887,"height":-1},{"longitude":114.67608,"latitude":30.57246,"height":-1},{"longitude":114.65197,"latitude":30.56909,"height":-1},{"longitude":114.62552,"latitude":30.55452,"height":-1},{"longitude":114.60471,"latitude":30.55901,"height":-1},{"longitude":114.58576,"latitude":30.57246,"height":-1},{"longitude":114.57345,"latitude":30.59102,"height":-1},{"longitude":114.56203,"latitude":30.61703,"height":-1},{"longitude":114.55570,"latitude":30.63393,"height":-1},{"longitude":114.54903,"latitude":30.64397,"height":-1},{"longitude":114.54207,"latitude":30.67206,"height":-1}]
+        var flightData = [{"longitude": 115.26390, "latitude": 30.15192, "height": -1}, {
+          "longitude": 115.25123,
+          "latitude": 30.16539,
+          "height": -1
+        }, {"longitude": 115.23922, "latitude": 30.17797, "height": -1}, {
+          "longitude": 115.23035,
+          "latitude": 30.18608,
+          "height": -1
+        }, {"longitude": 115.21618, "latitude": 30.20479, "height": -1}, {
+          "longitude": 115.19935,
+          "latitude": 30.21476,
+          "height": -1
+        }, {"longitude": 115.17668, "latitude": 30.21768, "height": -1}, {
+          "longitude": 115.15612,
+          "latitude": 30.21459,
+          "height": -1
+        }, {"longitude": 115.14390, "latitude": 30.20889, "height": -1}, {
+          "longitude": 115.12566,
+          "latitude": 30.20927,
+          "height": -1
+        }, {"longitude": 115.10630, "latitude": 30.21259, "height": -1}, {
+          "longitude": 115.08923,
+          "latitude": 30.22101,
+          "height": -1
+        }, {"longitude": 115.07676, "latitude": 30.23179, "height": -1}, {
+          "longitude": 115.07114,
+          "latitude": 30.24040,
+          "height": -1
+        }, {"longitude": 115.06793, "latitude": 30.25458, "height": -1}, {
+          "longitude": 115.07298,
+          "latitude": 30.27014,
+          "height": -1
+        }, {"longitude": 115.07917, "latitude": 30.28469, "height": -1}, {
+          "longitude": 115.08471,
+          "latitude": 30.29643,
+          "height": -1
+        }, {"longitude": 115.08498, "latitude": 30.31843, "height": -1}, {
+          "longitude": 115.08316,
+          "latitude": 30.33080,
+          "height": -1
+        }, {"longitude": 115.07613, "latitude": 30.35094, "height": -1}, {
+          "longitude": 115.05811,
+          "latitude": 30.37917,
+          "height": -1
+        }, {"longitude": 115.03532, "latitude": 30.39796, "height": -1}, {
+          "longitude": 115.00940,
+          "latitude": 30.40539,
+          "height": -1
+        }, {"longitude": 114.98450, "latitude": 30.40351, "height": -1}, {
+          "longitude": 114.94858,
+          "latitude": 30.40313,
+          "height": -1
+        }, {"longitude": 114.92275, "latitude": 30.40954, "height": -1}, {
+          "longitude": 114.89235,
+          "latitude": 30.41269,
+          "height": -1
+        }, {"longitude": 114.85739, "latitude": 30.42360, "height": -1}, {
+          "longitude": 114.84164,
+          "latitude": 30.43038,
+          "height": -1
+        }, {"longitude": 114.82849, "latitude": 30.44543, "height": -1}, {
+          "longitude": 114.82502,
+          "latitude": 30.46364,
+          "height": -1
+        }, {"longitude": 114.82501, "latitude": 30.48692, "height": -1}, {
+          "longitude": 114.82549,
+          "latitude": 30.49848,
+          "height": -1
+        }, {"longitude": 114.82782, "latitude": 30.51665, "height": -1}, {
+          "longitude": 114.83015,
+          "latitude": 30.53301,
+          "height": -1
+        }, {"longitude": 114.83233, "latitude": 30.55918, "height": -1}, {
+          "longitude": 114.83406,
+          "latitude": 30.57235,
+          "height": -1
+        }, {"longitude": 114.82183, "latitude": 30.59913, "height": -1}, {
+          "longitude": 114.80554,
+          "latitude": 30.60878,
+          "height": -1
+        }, {"longitude": 114.77815, "latitude": 30.61422, "height": -1}, {
+          "longitude": 114.75564,
+          "latitude": 30.60966,
+          "height": -1
+        }, {"longitude": 114.74401, "latitude": 30.59999, "height": -1}, {
+          "longitude": 114.73082,
+          "latitude": 30.58931,
+          "height": -1
+        }, {"longitude": 114.70874, "latitude": 30.57887, "height": -1}, {
+          "longitude": 114.67608,
+          "latitude": 30.57246,
+          "height": -1
+        }, {"longitude": 114.65197, "latitude": 30.56909, "height": -1}, {
+          "longitude": 114.62552,
+          "latitude": 30.55452,
+          "height": -1
+        }, {"longitude": 114.60471, "latitude": 30.55901, "height": -1}, {
+          "longitude": 114.58576,
+          "latitude": 30.57246,
+          "height": -1
+        }, {"longitude": 114.57345, "latitude": 30.59102, "height": -1}, {
+          "longitude": 114.56203,
+          "latitude": 30.61703,
+          "height": -1
+        }, {"longitude": 114.55570, "latitude": 30.63393, "height": -1}, {
+          "longitude": 114.54903,
+          "latitude": 30.64397,
+          "height": -1
+        }, {"longitude": 114.54207, "latitude": 30.67206, "height": -1}]
 
 //点的个数较密集的第二条航道
 //        var flightData = [{"longitude":115.26975,"latitude":30.14760,"height":-1},
@@ -473,7 +1030,7 @@
           this.viewer.entities.add({
             description: `Location: (${dataPoint.longitude}, ${dataPoint.latitude}, ${dataPoint.height})`,
             position: position,
-            point: { pixelSize: 10, color: Cesium.Color.RED }
+            point: {pixelSize: 10, color: Cesium.Color.RED}
           });
         }
 
@@ -503,16 +1060,14 @@
             if (me.index === 1) {//点单击
               var text = '新建标点';
               me.createPoint2(e, text)//绘制点
-            }
-            else if (me.index === 2 || me.index === 5) {//线，测距单击
+            } else if (me.index === 2 || me.index === 5) {//线，测距单击
               var earthPosition = me.viewer.scene.camera.pickEllipsoid(e.position, me.viewer.scene.globe.ellipsoid);
               if (Cesium.defined(earthPosition)) {
                 if (me.activeShapePoints.length === 0) {
                   if (me.index === 2) {//画线创建编号
                     var text = me.count.toString()
                     me.createPoint2(e, text);
-                  }
-                  else {//测距添加起点
+                  } else {//测距添加起点
                     var text = '起点';
                     me.createPoint2(e, text);
                   }
@@ -539,8 +1094,7 @@
                           eyeOffset: new Cesium.Cartesian3(0, 0, -150)
                         }
                       });
-                    }
-                    else if (me.getDistance_able) {
+                    } else if (me.getDistance_able) {
                       var point = me.createPoint(e);//添加线上的点
                       if (me.activeShapePoints.length > 1) {//消除undefined bug
                         me.text = me.line_text//得到距离
@@ -569,20 +1123,19 @@
                 }
                 me.activeShapePoints.push(earthPosition);
               }
-            }
-            else if (me.index === 3 || me.index === 4 || me.index === 6) {//面单击,矩形,测面单击
+            } else if (me.index === 3 || me.index === 4 || me.index === 6) {//面单击,矩形,测面单击
               var earthPosition = me.viewer.scene.camera.pickEllipsoid(e.position, me.viewer.scene.globe.ellipsoid);
               if (Cesium.defined(earthPosition)) {
                 var point = me.createPoint(e);//产生点
-                    me.viewer.entities.add({//添加点的标号
-                      position: earthPosition,
-                      label: {
-                        text: me.count.toString(),
-                        font: '20px Helvetica',
-                        fillColor: Cesium.Color.WHITE,
-                        eyeOffset: new Cesium.Cartesian3(0, 0, -150)
-                      }
-                    });
+                me.viewer.entities.add({//添加点的标号
+                  position: earthPosition,
+                  label: {
+                    text: me.count.toString(),
+                    font: '20px Helvetica',
+                    fillColor: Cesium.Color.WHITE,
+                    eyeOffset: new Cesium.Cartesian3(0, 0, -150)
+                  }
+                });
                 me.count++;
                 if (me.activeShapePoints.length === 0) {//第一个点
                   me.floatingPoint = point;
@@ -634,7 +1187,7 @@
       },
 
       //创建面
-      createPolygon(positionsData){
+      createPolygon(positionsData) {
         var $this = this;
         var polygon = $this.viewer.entities.add({
           polygon: {
@@ -752,7 +1305,7 @@
         return angle;
       },
 
-      getDistance(point1, point2){
+      getDistance(point1, point2) {
         var point1cartographic = Cesium.Cartographic.fromCartesian(point1);
         var point2cartographic = Cesium.Cartographic.fromCartesian(point2);
         /**根据经纬度计算出距离**/
@@ -834,6 +1387,12 @@
 
   .operation-item :active, :hover, :focus {
     color: #6850d8 !important;
+  }
+
+  .html-box{
+    height: 20px;
+    width:30px;
+    border: solid 1px #00ff00;
   }
 
 </style>
