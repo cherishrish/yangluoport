@@ -122,13 +122,13 @@
               <a href="javascript:">道路数据</a>
             </Dropdown-item>
             <Dropdown-item>
-              <a href="javascript:" @click="addHtml">html元素</a>
+              <a href="javascript:">html元素</a>
             </Dropdown-item>
             <Dropdown-item>
               <a href="javascript:">弹窗</a>
             </Dropdown-item>
             <Dropdown-item>
-              <a href="javascript:">动态扫描</a>
+              <a href="javascript:">灯光扫描</a>
             </Dropdown-item>
           </Dropdown-menu>
         </Dropdown>
@@ -241,6 +241,20 @@
           deviationR: 10,//差值 差值也大 速度越快
           eachInterval: 2000,//两个圈的时间间隔
           imageUrl: "../../static/redCircle.png"//波纹图片
+        },
+        //灯光扫描的lightData
+        lightData:{
+          circle:[0.003,114,30,30],// 第一个参数 0.003表示半径，第二个第三个分别表示底座圆心的坐标,第四个表示切割成多少个点。组成多少个面。越多会越卡 尽量实际项目不影响效果，越少越好。
+          observer:[114.01,30.01,500],//观察点，也就是光源点
+          positionList:[ //我们这里就不加高度了。不然太麻烦了 //以圆心为参考做偏移值获取，圆心坐标 [117,35]，简单点画个正方形吧 如果画圆的画，也可以多取点
+            [114,30],//初始位置 (圆心坐标 [117,35]要和这个初始位置统一，不然会偏移出去)
+            [114.01,30], //下一个点
+            [114.01,30.01],
+            [114,30.01],
+            [114,30],//回来
+          ],
+          material:Cesium.Color.RED.withAlpha(0.5),//光的材质
+          number:100//数字越小速度越快
         }
       }
     },
@@ -248,6 +262,173 @@
       this.init();
     },
     methods: {
+      //灯光扫描
+      // showLightScan(){
+      //   var _this = this
+      //   _this.addLightScan(_this.lightData)
+      //   console.log(_this.lightData)
+      //   _this.viewer.entities.add({
+      //     position : Cesium.Cartesian3.fromDegrees(_this.lightData.observer[0],_this.lightData.observer[1],_this.lightData.observer[2]/2),
+      //     name:"",
+      //     box : {
+      //       dimensions : new Cesium.Cartesian3(100.0, 100.0,_this.lightData.observer[2]),
+      //       outline : true,
+      //       outlineColor : Cesium.Color.WHITE,
+      //       outlineWidth : 2,
+      //       material : Cesium.Color.fromRandom({alpha : 0.5})
+      //     }
+      //   });
+      //   //发蓝光的线
+      //   const glowingLine = _this.viewer.entities.add({
+      //     name : 'Glowing blue line on the surface',
+      //     polyline : {
+      //       positions : Cesium.Cartesian3.fromDegreesArray(
+      //         [
+      //           _this.lightData.positionList[0][0],_this.lightData.positionList[0][1],
+      //           _this.lightData.positionList[1][0],_this.lightData.positionList[1][1],
+      //           _this.lightData.positionList[2][0],_this.lightData.positionList[2][1],
+      //           _this.lightData.positionList[3][0],_this.lightData.positionList[3][1],
+      //           _this.lightData.positionList[4][0],_this.lightData.positionList[4][1],
+      //         ]),
+      //       width : 10,
+      //       material : new Cesium.PolylineGlowMaterialProperty({ //发光线
+      //         glowPower : 0.2,
+      //         color : Cesium.Color.BLUE
+      //       })
+      //     }
+      //   });
+      // },
+      createLightScan_getCirclePoints(r, ox, oy, count){
+        let point = []; //
+        let radians = (Math.PI / 180) * Math.round(360 / count), //
+          i = 0;
+        for(; i < count; i++){
+          let x = ox + r * Math.sin(radians * i),
+            y = oy + r * Math.cos(radians * i);
+          point.unshift({x:x,y:y}); //
+        }
+        console.log(point)
+        return point
+      },
+      createLightScan_entityCList(viewer,point,data) {
+        var _this = this;
+        const lon = data.observer[0],lat= data.observer[1],h = data.observer[2];
+        const entityCList=[];
+        //
+        for(let i=0;i<point.length;i++){
+          let  hierarchy;
+          if(i===(point.length-1)){
+            hierarchy=new Cesium.PolygonHierarchy(Cesium.Cartesian3.fromDegreesArrayHeights(
+              [
+                lon,lat,h,
+                point[i].x,point[i].y,0,
+                point[0].x,point[0].y,0
+              ]))
+          }else{
+            hierarchy=new Cesium.PolygonHierarchy(Cesium.Cartesian3.fromDegreesArrayHeights(
+              [
+                lon,lat,h,
+                point[i].x,point[i].y,0,
+                point[i+1].x,point[i+1].y,0
+              ]))
+          }
+
+          const entityC = _this.viewer.entities.add({
+            name:"",
+            polygon : {
+              hierarchy:hierarchy,
+              outline : false,
+              perPositionHeight:true,//
+              material :data.material
+            }
+          });
+          entityCList.push(entityC);
+        }
+        console.log(entityCList)
+        return entityCList
+      },
+      createLightScan_changeOnePosition(data,entity,arr){
+        const positionList = data.positionList;
+        let x,y,x0,y0,X0,Y0,n=0,a=0;//
+        function f(i){
+          x= positionList[i+1][0]-positionList[i][0];//宸€�
+          y= positionList[i+1][1]-positionList[i][1];//宸€�
+          x0=x/data.number;//灏嗗樊鍊肩瓑鍒�500浠�
+          y0=y/data.number;
+          a=0;
+        }
+        f(n);
+        entity.polygon.hierarchy=new Cesium.CallbackProperty(function () { //鍥炶皟鍑芥暟
+          if((Math.abs(X0)>=Math.abs(x))&&(Math.abs(Y0)>=Math.abs(y))){ //褰撶瓑鍒嗗樊鍊煎ぇ浜庣瓑浜庡樊鍊肩殑鏃跺€� 灏遍噸鏂拌绠楀樊鍊煎拰绛夊垎宸€�  Math.abs
+            n=n+1;
+            if(n === positionList.length-1){
+              n=0;
+            }
+            arr[0]= arr[0]+X0;
+            arr[1]= arr[1]+Y0;
+            arr[2]= arr[2]+X0;
+            arr[3]= arr[3]+Y0;
+            f(n);//
+          }
+          X0=a*x0;//
+          Y0=a*y0;//
+          a++;
+          return  new Cesium.PolygonHierarchy(Cesium.Cartesian3.fromDegreesArrayHeights(
+            [
+              data.observer[0],data.observer[1],data.observer[2],
+              arr[0]+X0,arr[1]+Y0,0,
+              arr[2]+X0,arr[3]+Y0,0
+            ]))
+        },false)
+      },
+      addLightScan(){
+        var _this = this
+        //
+        const point = _this.createLightScan_getCirclePoints(_this.lightData.circle[0],_this.lightData.circle[1],_this.lightData.circle[2],_this.lightData.circle[3]);
+        //
+        const entityCList = _this.createLightScan_entityCList(_this.viewer,point,_this.lightData)
+        for(let i=0;i<entityCList.length;i++){
+          if(i!==entityCList.length-1){
+            _this.createLightScan_changeOnePosition(_this.lightData,entityCList[i],[point[i].x, point[i].y, point[i+1].x, point[i+1].y]) //涓棿arr 浠ｈ〃鐨勬槸鐐圭殑鍧愭爣
+          }else{
+            _this.createLightScan_changeOnePosition(_this.lightData,entityCList[i],[point[i].x, point[i].y, point[0].x, point[0].y])
+          }
+        }
+        console.log(entityCList)
+        //添加柱子
+          _this.viewer.entities.add({
+            position : Cesium.Cartesian3.fromDegrees(_this.lightData.observer[0],_this.lightData.observer[1],_this.lightData.observer[2]/2),
+            name:"",
+            box : {
+              dimensions : new Cesium.Cartesian3(100.0, 100.0,_this.lightData.observer[2]),
+              outline : true,
+              outlineColor : Cesium.Color.WHITE,
+              outlineWidth : 2,
+              material : Cesium.Color.fromRandom({alpha : 0.5})
+            }
+          });
+          //发蓝光的线
+          const glowingLine = _this.viewer.entities.add({
+            name : 'Glowing blue line on the surface',
+            polyline : {
+              positions : Cesium.Cartesian3.fromDegreesArray(
+                [
+                  _this.lightData.positionList[0][0],_this.lightData.positionList[0][1],
+                  _this.lightData.positionList[1][0],_this.lightData.positionList[1][1],
+                  _this.lightData.positionList[2][0],_this.lightData.positionList[2][1],
+                  _this.lightData.positionList[3][0],_this.lightData.positionList[3][1],
+                  _this.lightData.positionList[4][0],_this.lightData.positionList[4][1],
+                ]),
+              width : 10,
+              material : new Cesium.PolylineGlowMaterialProperty({ //发光线
+                glowPower : 0.2,
+                color : Cesium.Color.BLUE
+              })
+            }
+          });
+        return entityCList
+      },
+
       //双圆涟漪
       showDoubleCircleWave() {//扩散效果
         var _this = this
@@ -266,15 +447,15 @@
             })
           }
         });
-        var r1 = _this.data.minR, r2 = _this.data.minR;
+        var r1 = _this.data.minR, r2 = _this.data.minR, r3 = _this.data.minR;
 
         function changeR1() { //这是callback，参数不能内传
-          r1 = r1 + _this.data.deviationR;
-          if (r1 >= _this.data.maxR) {
-            r1 = _this.data.minR;
+          r1 = r1 + _this.data.deviationR;//扩散
+          if (r1 >= _this.data.maxR) {//当波纹扩散到最大值时
+            r1 = _this.data.minR;//回退到最开始
           }
           return r1;
-        }//通过改变圆的大小来实现波纹效果
+        }//通过改变圆的大小来实现波纹效果，第一个波纹效果实现
 
         function changeR2() {
           r2 = r2 + _this.data.deviationR;
@@ -282,7 +463,15 @@
             r2 = _this.data.minR;
           }
           return r2;
-        }//通过改变圆的大小来实现波纹效果
+        }//通过改变圆的大小来实现波纹效果，第二个波纹效果实现
+
+        function changeR3() {
+          r3 = r3 + _this.data.deviationR;
+          if (r3 >= _this.data.maxR) {
+            r3 = _this.data.minR;
+          }
+          return r3;
+        }//通过改变圆的大小来实现波纹效果，第三个波纹效果实现
 
         _this.viewer.entities.add({
           id: _this.data.id,
@@ -293,7 +482,7 @@
             semiMajorAxis: new Cesium.CallbackProperty(changeR1, false),
             height: _this.data.height,
             material: new Cesium.ImageMaterialProperty({
-              image: _this.data.imageUrl,
+              image: _this.data.imageUrl,//波纹图片
               repeat: new Cesium.Cartesian2(1.0, 1.0),
               transparent: true,
               color: new Cesium.CallbackProperty(function () {
@@ -325,10 +514,33 @@
               })
             }
           });
-        }, _this.data.eachInterval)
+        }, _this.data.eachInterval)//延时2秒
+
+        setTimeout(function () {
+          //第三个圆开始跑
+          _this.viewer.entities.add({
+            name: "",
+            position: Cesium.Cartesian3.fromDegrees(_this.data.lon, _this.data.lat, _this.data.height),
+            ellipse: {
+              semiMinorAxis: new Cesium.CallbackProperty(changeR3, false),
+              semiMajorAxis: new Cesium.CallbackProperty(changeR3, false),
+              height: _this.data.height,
+              material: new Cesium.ImageMaterialProperty({
+                image: _this.data.imageUrl,
+                repeat: new Cesium.Cartesian2(1.0, 1.0),
+                transparent: true,
+                color: new Cesium.CallbackProperty(function () {
+                  var alp = 1;
+                  alp = 1 - r2 / _this.data.maxR;
+                  return Cesium.Color.WHITE.withAlpha(alp)
+                }, false)
+              })
+            }
+          });
+        }, _this.data.eachInterval+2000)//延时4秒
       },
       //实现动态线和墙
-      //添加静态的线
+      //添加静态折线
       addLine() {
         var _this = this;
         var addline = _this.viewer.entities.add({
@@ -348,14 +560,14 @@
       },
       //添加Html
       addHtml(){
-        // var _this = this
-        // _this.viewer.entities.add({
-        //   html: {
-        //     position: [114.292832, 30.584519, 20],
-        //     element: `<div class="html-box">2</div>`,
-        //     offset: [10, 10]
-        //   }
-        // });
+        var _this = this
+        _this.viewer.entities.add({
+          html: {
+            position: [114.292832, 30.584519, 20],
+            element: `<div class="html-box">2</div>`,
+            // offset: [10, 10]
+          }
+        });
       },
       //实现雷达效果
       showRadarScan() {
@@ -1267,7 +1479,7 @@
           var dis_temp2 = _this.getDistance(points[j], points[k]);
           res += dis_temp1 * dis_temp2 * Math.abs(Math.sin(totalAngle));
         }
-        return (res / 1000000.0).toFixed(8);
+        return (res / 1000000.0).toFixed(8);//得到的面积为平方公里
       },
 
       /*角度*/
@@ -1316,7 +1528,7 @@
         s = Math.sqrt(Math.pow(s, 2) + Math.pow(point2cartographic.height - point1cartographic.height, 2));
         return s;
       },
-      //  清除
+      //  清除绘制
       clearDrawingBoard() {
         this.viewer.entities.removeAll();//删除全部
       },
@@ -1389,6 +1601,7 @@
     color: #6850d8 !important;
   }
 
+  /*html弹窗的样式*/
   .html-box{
     height: 20px;
     width:30px;
