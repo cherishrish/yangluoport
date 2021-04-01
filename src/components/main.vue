@@ -212,7 +212,7 @@
         polygonData: null, //面数据
         handler: '',//鼠标事件
         draw_able: false,//是否开始画
-        index: 1,
+        index: 1,//对应相应的操作
         line_able: false,//是否画线
         polygon_able: false,//是否画面
         rectangle_able: false,//是否画矩形
